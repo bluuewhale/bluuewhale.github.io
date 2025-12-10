@@ -1,0 +1,16 @@
+baseURL = 'https://bluuewhale.github.io/blog/'
+languageCode = 'en-us'
+title = 'Bluue Whale'
+theme = 'PaperMod'
+
+[params]
+  ShowReadingTime = true
+  ShowCodeCopyButtons = true
+  ShowBreadCrumbs = true
+  ShowPostNavLinks = true
+  defaultTheme = 'dark'
+  disableSpecial1stPost = true
+
+[markup]
+  [markup.highlight]
+    noClasses = false
