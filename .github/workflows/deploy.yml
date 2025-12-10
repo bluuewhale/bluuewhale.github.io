@@ -1,46 +1,71 @@
-name: Deploy Hugo to GitHub Pages
+name: Deploy Hugo site to GitHub Pages
 
 on:
   push:
-    branches: [ "main" ]
-  workflow_dispatch:
+    branches: [ main ]      # 기본 브랜치 기준
+  workflow_dispatch:         # Actions 탭에서 수동 실행도 허용
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: read             # 코드 읽기
+  pages: write               # Pages 배포 권한
+  id-token: write            # OIDC 토큰 (deploy-pages에서 사용)
 
 concurrency:
-  group: "pages"
+  group: "github-pages"      # 동시에 두 배포가 못 돌게 막기
   cancel-in-progress: true
 
 env:
-  HUGO_ENV: production
+  HUGO_VERSION: "0.152.2"    # 사용 중인 Hugo 버전과 맞추기 (공식 문서 최신 예시 기준)
+  TZ: "Asia/Seoul"           # 로그 타임존
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
+      # 1) 소스 체크아웃
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: true       # theme을 git submodule로 쓴다면 필수
+          fetch-depth: 0         # .GitInfo, .Lastmod 같은 기능에 필요
 
+      # 2) GitHub Pages 메타데이터 준비 (baseUrl 등)
       - name: Setup Pages
         id: pages
-        uses: actions/configure-pages@v4
+        uses: actions/configure-pages@v5
 
-      - name: Setup Hugo
-        uses: peaceiris/actions-hugo@v3
-        with:
-          hugo-version: "latest"
-          extended: true
-
-      - name: Build
-        run: hugo --minify
-
-      - name: Sanity check outputs
+      # 3) Hugo 설치 (extended 버전)
+      - name: Install Hugo
         run: |
-          ls -l public | head
+          set -eux
+          HUGO_TAR="hugo_extended_${HUGO_VERSION}_linux-amd64.tar.gz"
+          curl -sL "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/${HUGO_TAR}" -o "${HUGO_TAR}"
+          tar -xzf "${HUGO_TAR}"
+          sudo mv hugo /usr/local/bin/hugo
+          rm "${HUGO_TAR}"
+          hugo version
 
+      # 4) Hugo 캐시 복원 (이미지/리소스 빌드 속도 개선)
+      - name: Restore Hugo cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/hugo_cache
+          key: hugo-${{ env.HUGO_VERSION }}-${{ hashFiles('**/*.md', 'config.*', '**/config.*') }}
+          restore-keys: |
+            hugo-
+
+      # 5) Hugo 빌드
+      - name: Build site
+        run: |
+          set -eux
+          hugo \
+            --gc \
+            --minify \
+            --cacheDir "${{ runner.temp }}/hugo_cache" \
+            --baseURL "${{ steps.pages.outputs.base_url }}/"
+
+      # 6) GitHub Pages용 아티팩트 업로드
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -48,12 +73,12 @@ jobs:
 
   deploy:
     needs: build
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
