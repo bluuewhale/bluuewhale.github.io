@@ -24,6 +24,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v4
+
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3
         with:
@@ -32,6 +36,10 @@ jobs:
 
       - name: Build
         run: hugo --minify
+
+      - name: Sanity check outputs
+        run: |
+          ls -l public | head
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
