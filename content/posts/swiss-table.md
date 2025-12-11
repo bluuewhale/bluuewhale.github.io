@@ -8,7 +8,7 @@ categories = ['Performance', 'Data Structures']
 tags = ['Hash Table', 'SwissTable', 'SIMD', 'C++', 'Go', 'Java']
 +++
 
-# Swiss Tables: A Modern, High-Performance Hash Table
+## Swiss Tables:A Modern, High-Performance Hash Table
 
 Swiss Table is a high-performance hash table design introduced by Google engineers in 2017. It has since inspired many standard-library implementations across languages, including:
 - [Go 1.24 ships its map with this design (up to 60% faster)](https://go.dev/blog/swisstable)
