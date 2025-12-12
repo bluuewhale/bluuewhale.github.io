@@ -1,7 +1,7 @@
 +++
 date = '2025-12-12T22:56:51+09:00'
-draft = true
-title = 'Building a Fast, Memory-Efficient Hash Table in Java (by stealing the best ideas)'
+draft = false
+title = 'Building a Fast, Memory-Efficient Hash Table in Java (by borrowing the best ideas)'
 +++
 
 One day, I ran into SwissTable—the kind of design that makes you squint, grin, and immediately regret every naive linear-probing table you've ever shipped.
