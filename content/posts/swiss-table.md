@@ -77,34 +77,6 @@ For 32-bit hashes, a split like 25/7 also works.
     alt="SwissTable control bytes scan process"
     caption="image from: Abseil Swiss Tables Design Notes " >}}
 
-## Implementation Note
-
-I built a Java version as a personal project. You can find it [here](https://github.com/bluuewhale/HashSmith)
-
-## Memory Footprint
-
-Open addressing avoids per-entry node objects, which keeps memory overhead low. The smaller the payload, the bigger the advantage over `HashMap`—up to about 53.3% savings in my measurements.
-
-{{< figure src="/images/swiss-table/memory-footprint.png"
-    alt="Memory footprint comparison"
-    caption="Memory footprint savings with open addressing (SwissTable)" >}}
-
-## Benchmark Highlights
-
-- `Get-Hit`: JDK `HashMap` performs best.  
-- `Get-Miss`, `Put-Hit`, `Put-Miss`: SwissTable generally leads.  
-- Inserts show up to ~60% improvement as the table grows.
-
-### Results
-| get hit | get miss |
-| --- | --- |
-| ![CPU: get hit](/images/swiss-table/cpu-get-hit.png) | ![CPU: get miss](/images/swiss-table/cpu-get-miss.png) |
-
-| put hit | put miss |
-| --- | --- |
-| ![CPU: put hit](/images/swiss-table/cpu-put-hit.png) | ![CPU: put miss](/images/swiss-table/cpu-put-miss.png) |
-
-
 ## References
 
 - https://www.youtube.com/watch?v=ncHmEUmJZf4  
