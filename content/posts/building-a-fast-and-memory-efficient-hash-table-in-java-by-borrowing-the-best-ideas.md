@@ -65,11 +65,76 @@ At this stage, the prototype already *worked*, but it wasn't yet "SwissTable fas
 
 ## 5) The pieces of SwissMap that actually mattered
 
-Here's what survived after the usual round of "this feels clever but isn't fast" refactors:
+Here's what survived the usual round of "this feels clever but isn't fast" refactors.
 
-- **Control-plane first**: allocate control bytes plus sentinel padding so SIMD loads never run past the end. Keys/values stay separate (and cold) until metadata says otherwise.
-- **h1/h2 split**: the high bits pick the starting group; the low 7 bits become the control-byte fingerprint. Empty/deleted/full states live in the control bytes as values—not as scattered flags.
-- **Vectorized probe loop**: load one group of control bytes, compare against a broadcast `h2`, turn the vector comparison into a bitmask, and only then touch candidate keys. The same loaded vector is reused to detect empties (and optionally tombstones) without extra passes.
+### Control bytes & layout
+With non-primitive keys, the real cost is rarely "a few extra byte reads" — it's pointer chasing. Even one `equals()` can walk cold objects and pay cache-miss latency. So SwissMap treats the ctrl array as the first line of defense: scan a tight, cache-friendly byte array to narrow the search to a handful of plausible slots *before* touching any keys/values.
+
+This matters even more in Java because "keys/values" usually means arrays of references. On 64-bit JVMs, **compressed oops** (often enabled up to ~32GB depending on alignment/JVM flags) packs references into 32 bits, making the reference arrays denser. When compressed oops is off, references widen to 64 bits and the same number of key touches can spill across more cache lines.
+
+Either way, the ctrl array does most of the work: most misses die in metadata. Compressed oops just makes the unavoidable key touches cheaper when they do happen.
+
+### Sentinel padding
+SIMD wants fixed-width loads: 16 or 32 control bytes at a time. The annoying part is the tail — the last group near the end of the ctrl array. In native code you might "over-read" a few bytes and rely on adjacent memory being harmless. In Java you don't get that luxury: out-of-bounds is a hard stop.
+
+Without padding, the probe loop picks up tail handling: extra bounds checks, masked loads, or end-of-array branches — exactly the kind of bookkeeping you don't want in the hottest path. A small sentinel padding region at the end of **the** array lets every probe issue the same vector load, keeping the loop predictable and JIT-friendly.
+
+### H1/H2 split
+Split the hash into `h1` (which selects the starting group) and `h2` (a small fingerprint stored per slot in the ctrl byte). `h1` drives the probe sequence (usually via a power-of-two mask), while `h2` is a cheap first-stage filter: SIMD-compare `h2` against an entire group of control bytes and only touch keys for the matching lanes.
+
+SwissMap uses 7 bits for `h2`, leaving the remaining ctrl-byte values for special states like `EMPTY` and `DELETED`. That's the neat trick: one byte answers both:
+- "Is this slot full/empty/deleted?"
+- "Is this slot even worth a key compare?"
+
+Most lookups reject non-matches in the control plane. And if a probed group contains an `EMPTY`, that's a definitive stop signal: the probe chain was never continued past that point, so the key can't exist "later."
+
+### Reusing the loaded control vector
+A `ByteVector` load isn't free — it's a real SIMD-width memory load of control bytes. On my test box, that load alone was ~6ns per probed group. In a hash table where a `get()` might be only a few dozen nanoseconds, that's a meaningful tax.
+
+So SwissMap tries hard to load the ctrl vector exactly once per group and reuse it:
+- use the same loaded vector for the `h2` equality mask (candidate lanes)
+- and again for the `EMPTY`/`DELETED` masks (stop/continue decisions)
+
+No extra passes, no "just load it again," no duplicate work.
+
+### Tombstones
+Deletion in open addressing is where correctness bites: if you mark a removed slot as `EMPTY`, you can break the probe chain. Keys inserted later in that chain would become "invisible" because lookups stop at the first empty.
+
+Tombstones solve that by marking the slot as `DELETED` ("deleted but not empty"), so lookups keep probing past it.
+
+### Reusing tombstones on put
+On `put`, tombstones are not just a correctness hack — they're also reusable space. The common pattern is:
+- during probing, remember the first `DELETED` slot you see
+- keep probing until you either find the key (update) or hit an `EMPTY` (definitive miss)
+- if the key wasn't found, insert into the remembered tombstone rather than the later empty slot
+
+That tends to keep probe chains from getting longer over time, reduces resize pressure, and prevents workloads with lots of remove/put cycles from slowly poisoning performance.
+
+### When tombstones force a same-capacity rehash
+Tombstones preserve correctness, but they dilute the strongest early-exit signal: `EMPTY`. A table with lots of `DELETED` tends to probe farther on misses and inserts — more ctrl scans, more vector loads, and more chances to touch cold keys.
+
+So SwissMap tracks tombstones and triggers a **same-capacity rehash** when they cross a threshold (as a fraction of capacity or relative to live entries). This rebuilds the ctrl array, turning `DELETED` back into `EMPTY` and restoring short probe chains — basically compaction without changing logical contents.
+
+### A resize rehash without redundant checks
+Resizing forces a rehash because `h1` depends on capacity. The obvious approach is "iterate old entries and call `put` into the new table," but that pays for work you don't need: duplicate checks, extra branching, and unnecessary key equality calls.
+
+The faster path treats resize as a pure *move*:
+- allocate fresh ctrl/key/value arrays
+- reset counters
+- scan the old table once, and for each `FULL` slot:
+  - recompute `(h1, h2)` for the new capacity
+  - insert into the first available slot found by the same ctrl-byte probe loop
+  - **without** checking "does this key already exist?" (it can't: you're moving unique keys)
+
+This makes resizing a predictable linear pass over memory rather than a branchy series of full `put()` operations.
+
+### Iterators without extra buffers
+Iteration is another place where "simple" becomes surprisingly expensive. You can scan linearly and yield `FULL` slots, but many designs want a stable-ish visit pattern without allocating a separate dense list. And some reinsertion/rehash interactions can even go accidentally quadratic (see the Rust iteration write-up).
+
+SwissMap avoids extra buffers by iterating with a modular stepping permutation:
+pick a `start` and an odd `step` (with power-of-two capacity, any odd step is coprime), then visit indices via repeated `idx = (idx + step) & mask`. This hits every slot exactly once, spreads accesses across the table, and keeps iteration as a tight loop over the same ctrl-byte state machine used elsewhere.
+
+Here's a trimmed version of the lookup to show how the probe loop hangs together around the control bytes:
 
 ```java
 protected int findIndex(Object key) {
@@ -94,7 +159,7 @@ protected int findIndex(Object key) {
             eqMask &= eqMask - 1; // clear LSB
         }
         long emptyMask = v.eq(EMPTY).toLong(); // reuse loaded vector
-        if (emptyMask != 0) { // empty slot found. no need to probe further.
+        if (emptyMask != 0) { // any empty in a probed group is a definitive miss in SwissTable-style probing
             return -1;
         }
         if (++visitedGroups >= nGroups) { // guard against infinite probe when table is full of tombstones
@@ -104,26 +169,6 @@ protected int findIndex(Object key) {
     }
 }
 ```
-
-- **Tombstone accounting**: deletions mark `DELETED` and increment a tombstone counter; the table triggers rehash when load or tombstones cross a threshold to keep probe lengths stable.
-- **Minimal rehash path**: rehashing repopulates into a fresh control/key/value triad using the same insert path, but without duplicate checks.
-- **Iterators without extra buffers**: a precomputed pseudorandom stride walks the table without auxiliary arrays, while avoiding [accidental quadratic behavior during iteration](https://accidentallyquadratic.tumblr.com/post/153545455987/rust-hash-iteration-reinsertion)
-
-```java
-private void advance() {
-    next = -1; 
-    while (iter < capacity) {
-        // LCG - see https://en.wikipedia.org/wiki/Linear_congruential_generator
-        int idx = (start + (iter++ * step)) & mask;
-        if (isFull(ctrl[idx])) { 
-            next = idx; 
-            return; 
-        } 
-    }
-}
-```
-
-These were the hotspots the JIT could keep tight; everything else (`equals`/`hashCode` plumbing) stayed intentionally boring.
 
 ## 6) Benchmarks
 
