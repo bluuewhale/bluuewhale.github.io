@@ -74,6 +74,13 @@ This matters even more in Java because "keys/values" usually means arrays of ref
 
 Either way, the ctrl array does most of the work: most misses die in metadata. Compressed oops just makes the unavoidable key touches cheaper when they do happen.
 
+### Load factor
+In classic open addressing, pushing load factor up usually means the average probe chain gets longer fast — more branches, more random memory touches, and a steep cliff in miss cost. That's why many general-purpose hash maps pick conservative defaults. Java's `HashMap`, for example, defaults to a 0.75 load factor to keep miss costs from ballooning as the table fills.
+
+SwissTable flips the cost model: probing is dominated by scanning the ctrl bytes first, which are dense, cache-friendly, and cheap to compare in bulk. That means "one more probe group" is often just one more ctrl-vector load + compare, *not* a bunch of key `equals()` calls. With SwissTable-style probing, the table can run denser without falling off a cliff. Abseil's SwissTable-family maps are well known for targeting a ~7/8 (0.875) maximum load factor; even when the table is crowded, most probes are still "just metadata work."
+
+That trade-off is exactly what I wanted in Java too: higher load factor → fewer slots → smaller key/value arrays → fewer cache lines touched per operation, as long as the ctrl scan stays the fast path.
+
 ### Sentinel padding
 SIMD wants fixed-width loads: 16 or 32 control bytes at a time. The annoying part is the tail — the last group near the end of the ctrl array. In native code you might "over-read" a few bytes and rely on adjacent memory being harmless. In Java you don't get that luxury: out-of-bounds is a hard stop.
 
