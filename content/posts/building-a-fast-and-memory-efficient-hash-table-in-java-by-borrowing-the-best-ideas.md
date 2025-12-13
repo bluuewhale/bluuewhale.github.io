@@ -189,13 +189,13 @@ For context, I compared against `HashMap`, fastutil's `Object2ObjectOpenHashMap`
 ### The headline result
 Even near the maximum load factor, SwissMap stays competitive with other open-addressing tables and remains close to `HashMap` in throughput.  
 
-| get hit | get miss |
-| --- | --- |
-| ![CPU: get hit](/images/hash-smith/map-cpu-get-hit.png) | ![CPU: get miss](/images/hash-smith/map-cpu-get-miss.png) |
-
 | put hit                                     | put miss                                      |
 |---------------------------------------------|-----------------------------------------------|
 | ![CPU: put hit](/images/hash-smith/map-cpu-put-hit.png) | ![CPU: put miss](/images/hash-smith/map-cpu-put-miss.png) |
+
+| get hit | get miss |
+| --- | --- |
+| ![CPU: get hit](/images/hash-smith/map-cpu-get-hit.png) | ![CPU: get miss](/images/hash-smith/map-cpu-get-miss.png) |
 
 On memory, the flat layout (no buckets/overflow nodes) plus a 0.875 (7/8) max load factor translated to a noticeably smaller retained heap in small-payload scenarios—over 50% less than `HashMap` in this project's measurements.
 
