@@ -205,6 +205,14 @@ On memory, the flat layout (no buckets/overflow nodes) plus a 0.875 (7/8) max lo
 ### Caveat
 These numbers are pre-release; the Vector API is still incubating, and the table is tuned for high-load, reference-key workloads. Expect different results with primitive-specialized maps or low-load-factor configurations.
 
+## Quick heads-up 
+
+You might notice a SWAR-style SwissTable variant appearing out of nowhere in the benchmark section. That version is part of a follow-up round of tuning: same SwissTable control-byte workflow, but implemented with SWAR to reduce overhead and avoid leaning on the incubating Vector API.
+
+If SWAR is new to you, think of it as "SIMD within a register": instead of using vector lanes, we pack multiple control bytes into a single 64-bit word and do the same kind of byte-wise comparisons with plain scalar instructions. The end result is a similar fast-path idea, just expressed in a more portable (and JDK-version-friendly) way.
+
+I didn’t want this post to turn into three posts, so I’m saving the full "how/why" (SWAR included) for the next write-up — stay tuned.
+
 ## P.S. If you want the code
 
 This post is basically the narrative version of an experiment I'm building in public: [**HashSmith**](https://github.com/bluuewhale/hash-smith), a small collection of fast, memory-efficient hash tables for the JVM.  
