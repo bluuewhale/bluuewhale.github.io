@@ -187,7 +187,8 @@ All benchmarks were run on Windows 11 (x64) with Eclipse Temurin JDK 21.0.9, on 
 For context, I compared against `HashMap`, fastutil's `Object2ObjectOpenHashMap`, and Eclipse Collections' `UnifiedMap`.
 
 ### The headline result
-Even near the maximum load factor, SwissMap outperformed the other hash map implementations in most benchmarks.
+At high load factors SwissMap keeps competitive throughput against other open-addressing tables and stays close to JDK HashMap performance. In some benchmarks it also comes out ahead by a large margin.
+
 
 | put hit                                     | put miss                                      |
 |---------------------------------------------|-----------------------------------------------|
