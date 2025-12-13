@@ -213,3 +213,6 @@ It includes `SwissMap` (SwissTable-inspired, SIMD-assisted probing via the incub
 It's explicitly **experimental** (not production-ready), but it comes with JMH benchmarks and docs so you can reproduce the numbers and poke at the implementation details.
 
 If you want to run the benchmarks, sanity-check an edge case, or suggest a better probe/rehash strategy, I'd love issues/PRs
+
+## P.P.S. A great talk to watch
+If you want the "straight from the source" version, Matt Kulukundis and other Google engineers' CppCon talk on SwissTable is genuinely excellent — clear, practical, and packed with the kind of details that make the design click: [CppCon talk](https://www.youtube.com/watch?v=ncHmEUmJZf4).
