@@ -129,7 +129,7 @@ The faster path treats resize as a pure *move*:
 This makes resizing a predictable linear pass over memory rather than a branchy series of full `put()` operations.
 
 ### Iterators without extra buffers
-Iteration is another place where "simple" becomes surprisingly expensive. You can scan linearly and yield `FULL` slots, but many designs want a stable-ish visit pattern without allocating a separate dense list. And some reinsertion/rehash interactions can even go accidentally quadratic (see the Rust iteration write-up).
+Iteration is another place where "simple" becomes surprisingly expensive. You can scan linearly and yield `FULL` slots, but many designs want a stable-ish visit pattern without allocating a separate dense list. And some reinsertion/rehash interactions can even go accidentally quadratic (see the [Rust iteration write-up](https://accidentallyquadratic.tumblr.com/post/153545455987/rust-hash-iteration-reinsertion)).
 
 SwissMap avoids extra buffers by iterating with a modular stepping permutation:
 pick a `start` and an odd `step` (with power-of-two capacity, any odd step is coprime), then visit indices via repeated `idx = (idx + step) & mask`. This hits every slot exactly once, spreads accesses across the table, and keeps iteration as a tight loop over the same ctrl-byte state machine used elsewhere.
