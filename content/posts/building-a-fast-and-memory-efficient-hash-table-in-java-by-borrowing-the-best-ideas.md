@@ -14,9 +14,10 @@ SwissTable is an open-addressing hash table design that came out of Google's wor
 
 At a high level, it still does the usual hash-table thing: compute `hash(key)`, pick a starting slot, and probe until you find your key or an empty slot. 
 
-The twist is that SwissTable separates *metadata* (tiny "control bytes") from the actual key/value storage, and it uses those control bytes to avoid expensive key comparisons most of the time. Instead of immediately touching a bunch of keys (which are cold in cache and often pointer-heavy), it first scans a compact control bytes that is dense, cache-friendly, and easy to compare in bulk.
+The twist is that SwissTable separates *metadata* (tiny "control bytes") from the actual key/value storage, and it uses those control bytes to avoid expensive key comparisons most of the time. Instead of immediately touching a bunch of keys (which are cold in cache and often pointer-heavy), it first scans a compact control bytes that is dense, cache-friendly, and easy to compare in bulk. If this feels like a tiny Bloom filter, you're on the right track: the control bytes act as a cheap "maybe" gate before we pay for real key comparisons.
 
 To make probing cheap, SwissTable effectively splits the hash into two parts: `h1` and `h2`. Think of `h1` as the part that chooses where to start probing (which group to look at first), and `h2` as a tiny fingerprint stored in the control bytes to quickly rule slots in or out. It's not a full hash—just enough bits to filter candidates before we pay the cost of touching real keys.
+
 
 So on lookup, you compute a hash, derive `(h1, h2)`, jump to the group from `h1`, and compare `h2` against all control bytes in that group before you even look at any keys. That means most misses (and many hits) avoid touching key memory entirely until the metadata says "there's a plausible candidate here."  
 
