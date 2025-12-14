@@ -11,6 +11,17 @@ theme = 'PaperMod'
   defaultTheme = 'dark'
   disableSpecial1stPost = true
 
+  [params.homeInfoParams]
+    Content = 'I write about software engineering.'
+
+  [[params.socialIcons]]
+    name = 'github'
+    url = 'https://github.com/bluuewhale'
+
+  [[params.socialIcons]]
+    name = 'linkedin'
+    url = 'https://www.linkedin.com/in/donghyung-ko-3b36a2177/'
+
 [markup]
   [markup.highlight]
     noClasses = false
