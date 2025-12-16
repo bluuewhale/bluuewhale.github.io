@@ -1,0 +1,28 @@
+{{- /*
+  PaperMod's head.html calls this partial in production mode.
+  The upstream theme sometimes omits it; providing it here prevents build failures
+  and enables Google Analytics when configured.
+
+  Supported config:
+  - [services.googleAnalytics] id = "G-XXXX"
+*/ -}}
+
+{{- $gaID := "" -}}
+
+{{- with site.Config.Services.GoogleAnalytics.ID -}}
+  {{- $gaID = . -}}
+{{- end -}}
+
+{{- with $gaID -}}
+  {{- if and (ne . "") (not site.IsServer) -}}
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ . }}"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '{{ . }}');
+    </script>
+  {{- end -}}
+{{- end -}}
+
+

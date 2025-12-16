@@ -85,7 +85,7 @@ That trade-off is exactly what I wanted in Java too: higher load factor → fewe
 ### Sentinel padding
 SIMD wants fixed-width loads: 16 or 32 control bytes at a time. The annoying part is the tail — the last group near the end of the ctrl array. In native code you might "over-read" a few bytes and rely on adjacent memory being harmless. In Java you don't get that luxury: out-of-bounds is a hard stop.
 
-Without padding, the probe loop picks up tail handling: extra bounds checks, masked loads, or end-of-array branches — exactly the kind of bookkeeping you don't want in the hottest path. A small sentinel padding region at the end of **the** array lets every probe issue the same vector load, keeping the loop predictable and JIT-friendly.
+Without padding, the probe loop picks up tail handling: extra bounds checks, masked loads, or end-of-array branches — exactly the kind of bookkeeping you don't want in the hottest path. A small sentinel padding region at the end of the array lets every probe issue the same vector load, keeping the loop predictable and JIT-friendly.
 
 ### H1/H2 split
 Split the hash into `h1` (which selects the starting group) and `h2` (a small fingerprint stored per slot in the ctrl byte). `h1` drives the probe sequence (usually via a power-of-two mask), while `h2` is a cheap first-stage filter: SIMD-compare `h2` against an entire group of control bytes and only touch keys for the matching lanes.

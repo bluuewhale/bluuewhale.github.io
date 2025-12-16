@@ -3,7 +3,34 @@ languageCode = 'en-us'
 title = 'Bluue Whale'
 theme = 'PaperMod'
 
+# SEO / Crawling
+enableRobotsTXT = true
+
+# Generate search index (PaperMod uses /index.json on the search page)
+[outputs]
+  home = ["HTML", "RSS", "JSON"]
+  section = ["HTML", "RSS"]
+  taxonomy = ["HTML", "RSS"]
+  term = ["HTML", "RSS"]
+
+[sitemap]
+  changefreq = "weekly"
+  priority = 0.5
+  filename = "sitemap.xml"
+
 [params]
+  # PaperMod uses this to decide whether to output indexable robots/meta/structured data.
+  # Keep this as "production" for deployments; local `hugo server` remains noindex by default.
+  env = 'production'
+
+  description = 'I write about software engineering.'
+  keywords = ['software engineering', 'programming', 'performance', 'systems']
+  author = 'Donghyung Ko'
+
+  # Fallback image for OpenGraph/Twitter cards when a page has no cover/images.
+  # Points to an existing file under /static.
+  images = ['images/profile.jpg']
+
   ShowReadingTime = true
   ShowCodeCopyButtons = true
   ShowBreadCrumbs = true
@@ -13,6 +40,14 @@ theme = 'PaperMod'
 
   [params.homeInfoParams]
     Content = 'I write about software engineering.'
+
+  # used by PaperMod OG/Twitter templates (only when present)
+  [params.schema]
+    publisherType = 'Person'
+    sameAs = [
+      'https://github.com/bluuewhale',
+      'https://www.linkedin.com/in/donghyung-ko-3b36a2177/'
+    ]
 
   [[params.socialIcons]]
     name = 'github'
@@ -25,3 +60,6 @@ theme = 'PaperMod'
 [markup]
   [markup.highlight]
     noClasses = false
+
+[minify]
+  minifyOutput = true
