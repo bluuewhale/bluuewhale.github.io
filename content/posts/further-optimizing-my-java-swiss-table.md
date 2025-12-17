@@ -12,7 +12,8 @@ In the last post, I finally got a SwissTable-ish map running on the JVM and fast
 This follow-up is about that next round of tuning—where the improvements come less from "big design ideas" and more from noticing one weird hotspot at a time, pulling on the thread, and ending up somewhere unexpected.
 
 The next target: make SwissMap faster.
-And the place to start was obvious: the core SIMD-ish probing loop—findIndex.
+
+And the place to start was obvious: the core SIMD-ish probing loop—`findIndex`.
 
 Here's the relevant part:
 ```java
