@@ -168,7 +168,7 @@ if (k == key || k.equals(key)) {
 This looks almost insultingly simple, but it changes something *important*:
 - The `equals()` call site moves into `SwissMap::findIndex` itself.
 - The receiver is now `k = keys[idx]`.
-- In most realistic use (and definitely in this benchmark), the receiver(e.g. the stored key) type is **very stable** (monomorphic).
+- In most realistic use (and definitely in this benchmark), the receiver(e.g. the stored key) type is very stable (monomorphic).
 - And because `k` is `non-null` by invariant, the hot path gets cleaner.
 
 In other words: I stopped asking `C2` to optimize a call site that's polluted by the whole universe and instead gave it a call site that lives right inside the hot loop with a much cleaner type profile.
@@ -288,7 +288,7 @@ Once you commit to SWAR, the implementation starts to look different in a few ve
 
 That's basically the whole idea: load one word → compute match mask → walk candidates → advance group.
 
-### A quick note on that eqMask trick
+### A quick note on that `eqMask` trick
 
 This one-liner is doing most of the SWAR "magic":
 
@@ -327,7 +327,7 @@ In the Vector API version, the hot region had a very recognizable shape:
 
 On x86, that "extract a movemask" step maps nicely to dedicated instructions. On NEON, it tends to become a little construction project—a vector-to-scalar extraction followed by a chain of shifts/ors to compress lane results.
 
-In the SWAR version, that entire class of work simply… isn't there. No `q` registers, no lane extraction, no `VectorMask.toLong()` synthesis. The hot loop becomes: **load one `long`, do scalar ops, get a scalar mask.**
+In the SWAR version, that entire class of work simply… isn't there. No `q` registers, no lane extraction, no `VectorMask.toLong()` synthesis. The hot loop becomes: load one `long`, do scalar ops, get a scalar mask.
 
 ### The SWAR fingerprint broadcast is exactly what you'd hope
 
