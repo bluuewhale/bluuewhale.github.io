@@ -122,7 +122,7 @@ Normally you'd expect this to inline, then (in a monomorphic world) expect the `
 
 But HotSpot's ability to devirtualize depends on what it knows at that call site:
 - It can devirtualize if it knows the receiver's exact type (CHA-style certainty), or
-- if the receiver type profile at that bytecode location is strongly **monomorphic**, so it can emit "type guard → direct call / inline".
+- if the receiver type profile at that bytecode location is strongly monomorphic, so it can emit "type guard → direct call / inline".
 
 Here's the catch: **HotSpot type profiles attach to bytecode indices (BCIs) inside the callee**, not the caller. So the receiver type profile at `Objects.equals@11` is a blend of every place in the program that ends up calling `Objects.equals()`.
 
@@ -134,7 +134,7 @@ Or a `Long`
 
 Or some random user type
 
-So even if my benchmark is "all Integer, all the time," the profile at `Objects.equals@11` can easily drift into polymorphic (or worse, megamorphic) territory. And once that happens, JIT Compiler(`C2`) gets conservative: it keeps the call virtual, and my hot loop pays the price.
+So even if my benchmark is "all Integer, all the time," the profile at `Objects.equals@11` can easily drift into polymorphic (or worse, megamorphic) territory. And once that happens, Hotspot Compiler gets conservative: it keeps the call virtual, and my hot loop pays the price.
 
 This kind of situation has a name: `profile pollution`. If you want a deeper explanation, I recommend this post: [Notes on debugging HotSpot's JIT compilation](https://jornvernee.github.io/hotspot/jit/2023/08/18/debugging-jit.html#3-printing-inlining-traces) 
 
@@ -144,7 +144,7 @@ The key idea is summarized nicely there:
 
 ## 3) The fix: stop calling `Objects.equals` here
 
-`SwissMap` has a useful invariant: if a control byte indicates a valid candidate slot, then `keys[idx]` should not be `null`. (Empty slots don't produce candidates; candidates imply there's a key stored.)
+`SwissMap` has a useful invariant: if a control byte indicates a valid candidate slot, then `keys[idx]` should not be `null`. Empty slots don't produce candidates; candidates imply there's a key stored.
 
 So `Objects.equals(keys[idx], key)` is doing work I don't need:
 - null checks
@@ -168,13 +168,13 @@ if (k == key || k.equals(key)) {
 This looks almost insultingly simple, but it changes something *important*:
 - The `equals()` call site moves into `SwissMap::findIndex` itself.
 - The receiver is now `k = keys[idx]`.
-- In most realistic use (and definitely in this benchmark), the receiver(e.g. the stored key) type is very stable (monomorphic).
+- In most realistic use (and definitely in this benchmark), the receiver(e.g. the stored key) type is very stable.
 - And because `k` is `non-null` by invariant, the hot path gets cleaner.
 
 In other words: I stopped asking `C2` to optimize a call site that's polluted by the whole universe and instead gave it a call site that lives right inside the hot loop with a much cleaner type profile.
 
 ## 4) What the assembly looked like after: type guard → fast path
-After the change, the virtual call boundary disappeared, and the compiled code collapsed into what you want on a hot path: a quick type check (guard) and then a tiny fast-path compare.
+After the change, the virtual call boundary disappeared, and the compiled code collapsed into what you want on a hot path: a quick type guard and then a tiny fast-path compare.
 
 ```asm
 ldr  w14, [x13, #8]      ; load klass / type info for keys[idx]
