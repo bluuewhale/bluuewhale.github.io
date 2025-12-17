@@ -51,7 +51,9 @@ protected int findIndex(Object key) {
 }
 ```
 
-To find the bottleneck, I built a microbenchmark around `findIndex` and profiled on Mac M4/ARM using `XCTraceAsmProfiler`. To keep the JMH harness from dominating the samples, I used the classic trick: amplify the cost with a tight loop and mark it with `@OperationsPerInvocation`.
+To find the bottleneck, I built a microbenchmark around `findIndex` and profiled on Mac M4/ARM using `XCTraceAsmProfiler`. 
+
+To keep the JMH harness from dominating the samples, I used the classic trick: amplify the cost with a tight loop and mark it with `@OperationsPerInvocation`.
 
 ```java
 @Benchmark
