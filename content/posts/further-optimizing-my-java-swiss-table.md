@@ -126,13 +126,13 @@ But HotSpot's ability to devirtualize depends on what it knows at that call site
 
 Here's the catch: **HotSpot type profiles attach to bytecode indices (BCIs) inside the callee**, not the caller. So the receiver type profile at `Objects.equals@11` is a blend of every place in the program that ends up calling `Objects.equals()`.
 
-In one call site, a might be an `Integer`.
+In one call site, a might be an `Integer`
 
-In another, it might be a `String`.
+In another, it might be a `String`
 
-Or a `Long`.
+Or a `Long`
 
-Or some random user type.
+Or some random user type
 
 So even if my benchmark is "all Integer, all the time," the profile at `Objects.equals@11` can easily drift into polymorphic (or worse, megamorphic) territory. And once that happens, JIT Compiler(`C2`) gets conservative: it keeps the call virtual, and my hot loop pays the price.
 
