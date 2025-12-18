@@ -363,7 +363,7 @@ return (int) ((m * 0x0204_0810_2040_81L) >>> 56);
 ```
 
 In the hot region, you can see HotSpot building exactly that:
-```
+```asm
 ldr  x21, [x21, #0x10]   ; load ctrl word (8 control bytes packed in one long)
 eor  x10, x7, x21        ; x = word ^ broadcast
 
