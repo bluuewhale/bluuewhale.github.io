@@ -4,7 +4,7 @@ draft = false
 title = 'Further Optimizing my Java SwissTable: Profile Pollution and SWAR Probing'
 +++
 
-## 0) Part 2: optimizing the hot path (and finding a weird villain)
+## Part 2: optimizing the hot path (and finding a weird villain)
 
 > *"Why Objects.equals() showed up in the profile—and why SWAR beat the Vector API on ARM (and x86).*
 
