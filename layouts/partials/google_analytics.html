@@ -14,7 +14,7 @@
 {{- end -}}
 
 {{- with $gaID -}}
-  {{- if and (ne . "") (not site.IsServer) -}}
+  {{- if and hugo.IsProduction (ne . "") (not hugo.IsServer) -}}
     <script async src="https://www.googletagmanager.com/gtag/js?id={{ . }}"></script>
     <script>
       window.dataLayer = window.dataLayer || [];

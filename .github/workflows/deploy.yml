@@ -60,6 +60,8 @@ jobs:
         run: |
           set -eux
           hugo \
+            --config hugo.toml,hugo.production.toml \
+            --environment production \
             --gc \
             --minify \
             --cacheDir "${{ runner.temp }}/hugo_cache" \
