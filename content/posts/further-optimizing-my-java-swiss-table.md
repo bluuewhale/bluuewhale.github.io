@@ -299,20 +299,23 @@ This one-liner is doing most of the SWAR "magic":
 private int eqMask(long word, byte b) {
     // XOR with the broadcasted fingerprint so that matching bytes become 0 and non-matching stay non-zero.
     long x = word ^ broadcast(b);
-    // Subtract 1 from each byte: bytes that were 0 underflow and set their MSB (0x80), others keep MSB unchanged.
-    // AND with ~x to clear any MSB that came from originally non-zero bytes (we only want underflow-triggered MSBs).
-    // AND with 0x8080808080808080L to keep just the per-byte MSB flags (one per lane).
-    long m = (x - 0x0101010101010101L) & ~x & 0x8080808080808080L;
+    // Let y = (x >>> 1) | 0x80 in each byte lane.
+		// - If a lane of x is 0x00, then y becomes 0x80 and (y - x) == 0x80,
+		//   so the lane's MSB (0x80) is set.
+		// - If a lane of x is non-zero, then (y - x) will not leave the lane's MSB
+		//   set in the same reliable way for the final mask extraction.
+		// Finally, AND with 0x80.. to keep only the MSB bit from each byte lane,
+		// yielding one flag bit per lane at positions 7,15,23,...,63.
+		long m = (((x >>> 1) | 0x8080_8080_8080_8080L) - x) & 0x8080_8080_8080_8080L;
     // Compress spaced MSBs (bits 7,15,...) into the low byte (bit0..7).
     return (int) ((m * 0x0204_0810_2040_81L) >>> 56);
 }
 
 ```
 - XOR makes matching bytes become `0x00`
-- Subtracting `0x01` from each byte underflows only for `0x00` lanes, setting their MSB.
-- `& ~x` removes lanes that were non-zero (we only want true underflows).
+- The next line builds a borrow-safe per-byte "isZero" mask: it leaves `0x80` set in byte lanes where `x == 0`.
 - `& 0x8080...` keeps just the per-byte MSB flags—one bit per lane, still spaced out at bits 7, 15, 23, …
-- The multiply by `0x0204_0810_2040_81` is a packing trick: it "gathers" those spaced MSB bits into a single byte. Each lane's MSB is weighted so it lands in a unique bit position of the top byte after multiplication.
+- The multiply by `0x0204_0810_2040_81` is a packing trick: it "gathers" those spaced MSB bits into a single byte.
 - Finally, `>>> 56` selects that top byte, yielding an 8-bit mask where bit i tells you whether byte lane i matched.
 
 The important part isn't that it's clever—it's that it's scalar and produces a mask that's already ready for `numberOfTrailingZeros` without any vector-to-scalar extraction dance.
@@ -358,7 +361,7 @@ Here's the most interesting part: the SWAR equality test. This corresponds to:
 
 ```java
 long x = word ^ broadcast(b);
-long m = (x - 0x0101010101010101L) & ~x & 0x8080808080808080L;
+long m = (((x >>> 1) | 0x8080_8080_8080_8080L) - x) & 0x8080_8080_8080_8080L;
 return (int) ((m * 0x0204_0810_2040_81L) >>> 56);
 ```
 
@@ -367,23 +370,18 @@ In the hot region, you can see HotSpot building exactly that:
 ldr  x21, [x21, #0x10]   ; load ctrl word (8 control bytes packed in one long)
 eor  x10, x7, x21        ; x = word ^ broadcast
 
-; x - 0x010101...
-mov  x11, #0xfeff
-movk x11, #0xfefe, lsl #16
-movk x11, #0xfefe, lsl #32
-movk x11, #0xfefe, lsl #48
-add  x11, x10, x11       ; x + 0xfefefe... == x - 0x010101...
+lsr  x11, x10, #1                   ; m = (x >>> 1)
+orr  x11, x11, #0x8080808080808080  ; m |= 0x8080... 
+sub  x11, x11, x10                  ; m -= x
+and  x11, x11, #0x8080808080808080  ; m &= 0x8080...
 
-bic  x10, x11, x10       ; (x - 1) & ~x   (bit-clear is perfect for this identity)
-...
-and  x10, x10, #0x8080808080808080
-mul  x10, x10, <magic>   ; m * 0x0x0204...
-lsr  x10, x10, #0x38     ; >>> 56, pack per-byte MSBs into a compact mask byte
+mul  x11, x11, <magic>   ; m * 0x0x0204...
+lsr  x11, x11, #0x38     ; >>> 56, pack per-byte MSBs into a compact mask byte
 ```
 
 A couple of things made me happy here:
 
-The core identity survives intact: XOR → subtract-per-byte → `& ~x` → keep MSBs.
+The core identity survives intact: "XOR → borrow-safe per-byte zero detect → keep MSBs → pack into a byte mask"
 
 The "pack into a mask" step is handled with a multiply+shift style packing sequence rather than a long serial OR/shift chain. That's still a dependency chain (because it has to be), but it's a shorter and more GPR-friendly one than "extract vector → compress bits."
 
