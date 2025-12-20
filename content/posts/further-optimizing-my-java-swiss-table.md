@@ -199,8 +199,6 @@ On the same benchmark setup, this simplification cut the per-invocation time by 
 
 Not bad for deleting a helper method call.
 
-(If you're reading this and thinking "this is why micro-optimizations feel like magic tricks," yes. This is exactly that.)
-
 ## 6) Next bottleneck: `VectorMask.toLong()` on ARM (NEON movemask pain)
 
 Once `equals()` stopped dominating the profile, something else stepped forward into the spotlight: `VectorMask.toLong()`.
