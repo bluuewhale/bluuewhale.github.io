@@ -6,6 +6,7 @@ slug = 'kotlin-coroutine-internals'
 description = 'How Kotlin coroutines build suspension points with state machines and CPS.'
 tags = ['Kotlin', 'Coroutines', 'Concurrency', 'CPS', 'State Machine']
 categories = ['Kotlin', 'Concurrency']
+images = ['images/profile.jpg']
 +++
 
 This post explains how coroutines work, referencing the design proposal [Kotlin Proposals - Coroutines](https://github.com/Kotlin/KEEP/blob/master/proposals/coroutines.md).

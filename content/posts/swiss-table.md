@@ -6,6 +6,11 @@ slug = 'swiss-table'
 description = 'Swiss Table hash table design with open addressing, Robin Hood probing, SIMD control bytes, and a Java port experiment.'
 categories = ['Performance', 'Data Structures']
 tags = ['Hash Table', 'SwissTable', 'SIMD', 'C++', 'Go', 'Java']
+
+[cover]
+image = 'images/swiss-table/4.webp'
+alt = 'Visualization used in the SwissTable explanation'
+hiddenInSingle = true
 +++
 
 ## Swiss Tables:A Modern, High-Performance Hash Table

@@ -6,6 +6,11 @@ slug = 'simd-json'
 description = 'Overview of the SIMD JSON algorithm that uses SIMD instructions to speed up JSON parsing 2–5x, covering structure indexing and parsing stages'
 categories = ['Parsing', 'Performance']
 tags = ['SIMD', 'JSON', 'Parsing', 'Performance']
+
+[cover]
+image = 'images/simd-json/simd-json-benchmark.webp'
+alt = 'Benchmark chart showing SIMD-accelerated JSON parsing performance'
+hiddenInSingle = true
 +++
 
 

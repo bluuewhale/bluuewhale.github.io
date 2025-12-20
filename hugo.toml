@@ -6,6 +6,12 @@ theme = 'PaperMod'
 # SEO / Crawling
 enableRobotsTXT = true
 
+# Use git commit times for lastmod where possible (improves sitemap + "updated" in schema/OG).
+enableGitInfo = true
+
+[frontmatter]
+  lastmod = [":git", "lastmod", ":fileModTime", "date", "publishDate"]
+
 # Generate search index (PaperMod uses /index.json on the search page)
 [outputs]
   home = ["HTML", "RSS", "JSON"]

@@ -3,6 +3,14 @@ date = '2025-12-12T22:56:51+09:00'
 draft = false
 title = 'Building a Fast, Memory-Efficient Hash Table in Java (by borrowing the best ideas)'
 description = 'Implementing SwissTable-style hash map in Java'
+categories = ['Data Structures', 'Performance']
+tags = ['Hash Table', 'SwissTable', 'Java', 'Performance']
+keywords = ['open addressing', 'control bytes', 'SIMD', 'SWAR', 'cache locality']
+
+[cover]
+image = 'images/hash-smith/map-memory-bool.png'
+alt = 'Memory footprint comparison for the Java SwissTable experiment'
+hiddenInSingle = true
 +++
 
 One day, I ran into SwissTable—the kind of design that makes you squint, grin, and immediately regret every naive linear-probing table you've ever shipped.

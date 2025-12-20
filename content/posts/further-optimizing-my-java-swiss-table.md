@@ -2,6 +2,15 @@
 date = '2025-12-17T22:12:45+09:00'
 draft = false
 title = 'Further Optimizing my Java SwissTable: Profile Pollution and SWAR Probing'
+description = 'A second round of Java SwissTable tuning: why Objects.equals polluted the profile, and why a SWAR probing loop beat the Vector API on ARM and x86.'
+categories = ['Data Structures', 'Performance']
+tags = ['Hash Table', 'SwissTable', 'Java', 'Performance', 'Profiling', 'JMH', 'SWAR']
+keywords = ['profile pollution', 'branch prediction', 'SIMD', 'Vector API', 'microbenchmark']
+
+[cover]
+image = 'images/further-optimizing-my-java-swiss-table/put-miss.png'
+alt = 'Java SwissTable optimization: profiling and SWAR probing'
+hiddenInSingle = true
 +++
 
 ## Part 2: optimizing the hot path (and finding a weird villain)
