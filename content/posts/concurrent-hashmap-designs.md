@@ -918,7 +918,6 @@ private final boolean tableFull(int reprobe_cnt, int len)
 ```
 
 In short, `CHM` is where NBHM centralizes **shared state that must be seen consistently across threads**, but that is *orthogonal* to the actual key/value lookup logic.
-****
 
 ### **Hash Memoization: Avoiding Expensive `equals()` on the Hot Path**
 
@@ -1201,12 +1200,12 @@ if( CAS_newkvs(newkvs) ) {
 }
 ```
 
-fter `_newkvs` becomes non-null, all threads can see that a new table exists, and the rest becomes cooperative copying.
+After `_newkvs` becomes non-null, all threads can see that a new table exists, and the rest becomes cooperative copying.
 
 Work distribution uses two counters:
 
 - `_copyIdx`: claims chunks of copy work
-- `_copyDone`: tracks how many slots are confirmed-copied (used for promotion
+- `_copyDone`: tracks how many slots are confirmed-copied (used for promotion)
 
 ```java
 volatile long _copyIdx = 0;
