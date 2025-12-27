@@ -1,14 +1,13 @@
 +++
 date = '2025-12-27T14:30:37+09:00'
 draft = false
-title = 'Concurrent Hash Map Designs: Synchronized, Sharding, and ConcurrentHashMap'
+title = "Concurrent Hash Map Designs: Global Locks, Sharding, ConcurrentHashMap, and NonBlockingHashMap"
 
 # SEO / Social
-# - PaperMod uses .Description for meta description + OG/Twitter/Schema. If omitted, it falls back to .Summary.
-description = 'A tour of common concurrent hash map designs—global locks, sharding/lock striping, and Java’s ConcurrentHashMap—through the lens of contention and performance.'
+description = "A tour of common concurrent hash map designs—global locks, sharding/lock striping, Java's ConcurrentHashMap, and Cliff Click's NonBlockingHashMap (NBHM)—through the lens of contention and performance."
 categories = ['Concurrency', 'Data Structures', 'Performance']
-tags = ['Concurrency', 'Java', 'ConcurrentHashMap', 'Synchronization', 'Lock Striping']
-keywords = ['concurrent hash map', 'lock striping', 'sharding', 'synchronized', 'Java monitors', 'CAS', 'false sharing', 'cache coherence']
+tags = ['Concurrency', 'Java', 'ConcurrentHashMap', 'NonBlockingHashMap', 'Synchronization', 'Lock Striping', 'Lock-Free']
+keywords = ['concurrent hash map', 'lock striping', 'sharding', 'synchronized', 'Java monitors', 'CAS', 'false sharing', 'cache coherence', 'NBHM', 'lock-free', 'non-blocking']
 
 # PaperMod reads .Params.cover.image for:
 # - post cover rendering
@@ -818,15 +817,486 @@ This design has a few practical benefits. It avoids a stop-the-world style "ever
 
 I'll stop here for now—CHM's resize protocol is deep enough that it deserves its own dedicated section, and including all the details here would make this part unnecessarily long.
 
+## 4) Lock-Free Open Addressing (Cliff Click's `NonBlockingHashMap`)
+
+So far we've covered three concurrency strategies:
+
+- one global lock (`synchronizedMap`)
+- sharding (`DashMap`-style)
+- and Java's `ConcurrentHashMap` (CAS-first, bin-local locking, cooperative resize)
+
+Cliff Click's `NonBlockingHashMap` (NBHM) explores a fourth point in the design space: an **open-addressed hash table** where updates are coordinated via **CAS-based slot claiming**, and resizing is handled by **cooperative copying** rather than a stop-the-world phase.
+
+The class header doesn't hide its ambition: it explicitly positions itself as a lock-free alternative to `ConcurrentHashMap`, emphasizing non-blocking updates and scalability under high update rates. In fact, the comment is *extremely* confident about scalability, claiming linear scaling "up to 768 CPUs on a 768-CPU Azul box," even under 100% updates or 100% reads.
+
+I'm not treating these numbers as gospel—they depend heavily on workload, JVM, and hardware—but the claim is still a useful signal. NBHM was designed with **high update throughput at large core counts** as a first-class goal, not as an afterthought.
+
+
+### A Single Table Snapshot, Atomically Replaced
+
+NBHM's main table state lives in a single `Object[]` called `_kvs`.
+
+```java
+private transient Object[] _kvs;
+```
+
+And yes—replacement really means replacement: `_kvs` can be swapped as a single atomic operation via Unsafe:
+
+```java
+private final boolean CAS_kvs( final Object[] oldkvs, final Object[] newkvs ) {
+  return _unsafe.compareAndSwapObject(this, _kvs_offset, oldkvs, newkvs );
+}
+```
+
+The layout inside `_kvs` is also very data-oriented:
+
+- `kvs[0]` holds a control structure `CHM`
+- `kvs[1]` holds `int[] hashes` (memoized full hashes)
+- then pairs of `{Key, Value}` start from slot 2
+
+```java
+private static final CHM   chm   (Object[] kvs) { return (CHM  )kvs[0]; }
+private static final int[] hashes(Object[] kvs) { return (int[])kvs[1]; }
+private static final Object key(Object[] kvs,int idx) { return kvs[(idx<<1)+2]; }
+private static final Object val(Object[] kvs,int idx) { return kvs[(idx<<1)+3]; }
+private static final int len(Object[] kvs) { return (kvs.length-2)>>1; }
+```
+
+One subtle choice here is why `CHM` is stored inside `_kvs` instead of having `_kvs` inside `CHM`. The comment spells it out:
+
+> The `CHM` info is used during resize events and updates, but not during standard 'get' operations.  I assume 'get' is much more frequent than 'put'.  'get' can skip the extra indirection of skipping through the `CHM` to reach the `_kvs` array.
+> 
+
+### A Note on the Internal `CHM`: Control Plane
+
+One slightly confusing aspect of `NonBlockingHashMap` is the presence of a nested class called `CHM`. At first glance, this looks odd: *why does a lock-free hash map contain something named "CHM" at all?* Is this just a leftover from `ConcurrentHashMap`?
+
+It isn't. In NBHM, `CHM` plays a very specific role: it acts as the **control plane** for the hash table, while the actual keys and values live entirely in the **data plane** (`_kvs`).
+
+`CHM` is **not** a bucket table.
+
+It does **not** store keys or values.
+
+It is **not** involved in the normal `get()` probe loop beyond a single volatile read.
+
+In particular, `get()` never walks through `CHM` to find entries. That work is done purely against the `_kvs` array. This separation is intentional.
+
+`CHM` groups together all the **global coordination state** needed to make the lock-free protocol work:
+
+**Size and slot counters**
+
+These track how many live key/value pairs exist and how many key slots have ever been claimed (important with tombstones)
+
+```java
+private final Counter _size;
+private final Counter _slots;
+```
+
+**Resize state**
+
+This single field answers the question: "Is a resize in progress, and if so, where is the new table?"
+
+```java
+volatile Object[] _newkvs;
+```
+
+**Copy coordination**
+
+These counters distribute resize work across threads and determine when it is safe to promote the new table.
+
+```java
+volatile long _copyIdx;
+volatile long _copyDone;
+```
+
+**Resize heuristics**
+
+This logic decides *when* reprobe rates or tombstone density are bad enough to justify starting a resize.
+
+```java
+private final boolean tableFull(int reprobe_cnt, int len)
+```
+
+In short, `CHM` is where NBHM centralizes **shared state that must be seen consistently across threads**, but that is *orthogonal* to the actual key/value lookup logic.
+****
+
+### **Hash Memoization: Avoiding Expensive `equals()` on the Hot Path**
+
+One small but telling detail in `NonBlockingHashMap` is the presence of a dedicated `hashes[]` array:
+
+```java
+// Slot 1 holds full hashes as an array of ints.
+private static final int[] hashes(Object[] kvs) { return (int[])kvs[1]; }
+```
+
+At first glance, this may look redundant—after all, the hash of the lookup key is already computed once at the beginning of `get` or `put`. But the motivation becomes clear once you look at where this array is actually used.
+
+During probing, key comparison is performed via `keyeq(...)`:
+
+```java
+private static boolean keyeq(Object K, Object key, int[] hashes, int idx, int fullhash) {
+  return
+    K == key ||
+    ((hashes[idx] == 0 || hashes[idx] == fullhash) &&
+     K != TOMBSTONE &&
+     key.equals(K));
+}
+```
+
+The critical line is the hash check:
+
+```java
+hashes[idx] == 0 || hashes[idx] == fullhash
+```
+
+This is a **cheap negative filter**. If the memoized hash stored in the slot does *not* match the lookup key's hash, the code can immediately skip the expensive `equals()` call. Only when the hashes match (or when the hash is still zero) does it fall back to a full key comparison.
+
+This matters because `equals()` is often the most expensive operation in the probe loop:
+
+- it is a virtual call,
+- it may be megamorphic under mixed key types,
+- and it often involves additional memory reads inside the key object.
+
+In contrast, reading `hashes[idx]` is just a single load from a dense `int[]`, which is far more cache- and JIT-friendly.
+
+> If you want a concrete example of how much `Objects.equals` can hurt hash map performance on the hot path, I wrote up a detailed case study in [my previous post](https://bluuewhale.github.io/posts/further-optimizing-my-java-swiss-table/#2-why-didnt-hotspot-c2-compiler-devirtualize-objectsequalsa-b).
+
+
+### **A Familiar Idea if You've Seen SwissTable**
+
+Conceptually, this optimization is strikingly similar to SwissTable's design.
+
+SwissTable also tries very hard to avoid expensive key comparisons on the hot path. Instead of storing full hashes, it stores a small fingerprint (`H2`) in a compact metadata array. Lookups first compare these fingerprints in bulk; only candidate slots proceed to a full key comparison.
+
+The underlying idea is the same in both designs:
+
+> Use a cheap, cache-friendly hash-derived check to rule out most mismatches before touching the actual key.
+> 
+
+NBHM uses a full `int` hash per slot; SwissTable uses a compact 7-bit tag packed into control bytes. The data layout and SIMD tricks differ, but the motivation is identical: push expensive work (`equals`, pointer chasing) as far off the hot path as possible.
+
+Seen in that light, `hashes[]` in `NonBlockingHashMap` is not just a micro-optimization—it's an early example of the same principle that SwissTable later takes much further with explicit metadata arrays and vectorized probing.
+
+### Unsafe Everywhere: Element-level CAS on Keys and Values
+
+NBHM doesn't use `AtomicReferenceArray`. Instead it uses `Unsafe` to CAS individual array elements, exactly like we saw in `ConcurrentHashMap`'s `tabAt/casTabAt`.
+
+```java
+private static final boolean CAS_key( Object[] kvs, int idx, Object old, Object key ) {
+  return _unsafe.compareAndSwapObject( kvs, rawIndex(kvs,(idx<<1)+2), old, key );
+}
+private static final boolean CAS_val( Object[] kvs, int idx, Object old, Object val ) {
+  return _unsafe.compareAndSwapObject( kvs, rawIndex(kvs,(idx<<1)+3), old, val );
+}
+```
+
+This is the foundation for the whole algorithm:
+
+- keys and values are stored in plain `Object[]`
+- each slot update is guarded by a single CAS
+
+### Sentinel States: `TOMBSTONE` and `Prime`
+
+Since this is open addressing, deletion can't simply "clear" a slot without breaking probe chains. NBHM uses a tombstone marker:
+
+```java
+private static final Object TOMBSTONE = new Object();
+```
+
+But it also needs a way to say "this slot is being migrated to a new table." That's what the `Prime` wrapper is for:
+
+```java
+private static final class Prime {
+  final Object _V;
+  Prime( Object V ) { _V = V; }
+  static Object unbox( Object V ) { return V instanceof Prime ? ((Prime)V)._V : V; }
+}
+
+```
+
+And there's even a special "primed tombstone":
+
+```java
+private static final Prime TOMBPRIME = new Prime(TOMBSTONE);
+```
+
+This might look like a quirky implementation detail, but it's actually the central mechanism that makes cooperative resizing work.
+
+### `get()`: Open Addressing + One Volatile Read for Safe Publication
+
+The read path is a classic probe loop:
+
+```java
+int idx = fullhash & (len-1);
+while (true) {
+  final Object K = key(kvs,idx);
+  final Object V = val(kvs,idx);
+  if( K == null ) return null;
+  ...
+  idx = (idx+1)&(len-1);
+}
+```
+
+The interesting part is the comment right after reading `K` and `V`. NBHM does a **volatile read of `chm._newkvs` before comparing keys**:
+
+```java
+final Object[] newkvs = chm._newkvs;// VOLATILE READ before key compare
+```
+
+And the comment explains why:
+
+- without a volatile read, a thread could observe the key reference in the table but still see an uninitialized key body (publication / reordering)
+- similarly, it wants a happens-before edge before returning a newly inserted value
+
+The important point is not "volatile is slow," but **where** NBHM chooses to pay for it:
+
+> It pays one volatile read per probe step, because it wants a clean happens-before boundary on the hot path.
+> 
+
+If the key matches and the value is not `Prime`, `get` can return immediately:
+
+```java
+if( keyeq(K,key,hashes,idx,fullhash) ) {
+  if( !(V instanceof Prime) )
+    return (V == TOMBSTONE) ? null : V;
+  // Key hit - but slot is (possibly partially) copied to the new table.
+  // Finish the copy & retry in the new table.
+  return get_impl(topmap, chm.copy_slot_and_check(...), key, fullhash);
+}
+```
+
+If it sees a `Prime`, it does not try to interpret it locally. It treats it as a "migration in progress" marker:
+
+- help copy the slot
+- retry in the new table
+
+### `putIfMatch()`: The Whole Map in One Function
+
+Almost all mutations funnel through `putIfMatch`:
+
+- `put` uses `NO_MATCH_OLD`
+- `putIfAbsent` uses `TOMBSTONE`
+- `remove` uses `TOMBSTONE` as the new value
+- `replace` uses `MATCH_ANY` or an expected old value
+
+```java
+public TypeV put(TypeK key, TypeV val) {
+  return putIfMatch(key, val, NO_MATCH_OLD);
+}
+
+public TypeV putIfAbsent(TypeK key, TypeV val) {
+  return putIfMatch(key, val, TOMBSTONE);
+}
+
+public TypeV remove(Object key) {
+  return putIfMatch(key, TOMBSTONE, NO_MATCH_OLD);
+}
+
+public TypeV replace(TypeK key, TypeV val) {
+    return putIfMatch(key, val, MATCH_ANY); 
+}
+```
+
+That design choice matters: correctness lives in one place.
+
+### Phase 1: Key-Claim (Atomic Slot Claiming)
+
+The first half of `putIfMatch` is labeled "Key-Claim stanza." It spins until it can claim a key slot or decides the table must resize.
+
+```java
+while( true ) {             // Spin till we get a Key slot
+  V = val(kvs,idx);
+  K = key(kvs,idx);
+  
+  if( K == null ) { // Slot is free?
+    if( putval == TOMBSTONE ) return putval; // never-been here
+    if( CAS_key(kvs,idx, null, key ) ) {
+      chm._slots.add(1);
+      hashes[idx] = fullhash;
+      break;
+    }
+    // CAS to claim the key-slot failed.
+    K = key(kvs,idx);
+    assert K != null;
+  }
+  ...
+}
+```
+
+This is the key lock-free move:
+
+- empty slot (`K == null`) is claimed with `CAS_key(null → key)`
+- key slots "become used" via `_slots`
+- the full hash is memoized
+
+And then there's an extremely important comment about Java CAS:
+
+> Java CAS returns only a boolean, so on failure you don't get the "witness" value that caused it to fail. Re-reading cannot reliably recover the witness because another thread might change the slot again. So NBHM avoids "apparent spurious failure" by **not allowing keys to ever change**.
+> 
+
+That explains a non-obvious invariant:
+
+> Key slots are forever claimed. Deletes don't remove keys; they tombstone values.
+> 
+
+That single invariant makes a lot of lock-free reasoning tractable.
+
+### Phase 2: Resize Detection on the Write Path
+
+Before actually CASing the value, NBHM decides whether it must start/participate in a resize.
+
+It forces resize when:
+
+- it's inserting a new value into a previously-null value slot and `tableFull(...)` says reprobes are too high, or
+- it observed a `Prime` (meaning a migration protocol is in play)
+
+```java
+if( newkvs == null &&
+    ((V == null && chm.tableFull(reprobe_cnt,len)) ||
+     V instanceof Prime) )
+  newkvs = chm.resize(topmap,kvs);
+
+if( newkvs != null )
+  return putIfMatch(topmap, chm.copy_slot_and_check(...), key, putval, expVal);
+```
+
+So writes do not "fight" a resize. They join it.
+
+### Phase 3: Value CAS + Size Accounting
+
+Once it's sure it's operating on a stable table (no newkvs), it applies the expected-value logic and CASes the value slot:
+
+```java
+if( CAS_val(kvs, idx, V, putval ) ) {
+  if( expVal != null ) {
+    if(  (V == null || V == TOMBSTONE) && putval != TOMBSTONE ) chm._size.add( 1);
+    if( !(V == null || V == TOMBSTONE) && putval == TOMBSTONE ) chm._size.add(-1);
+  }
+  return (V==null && expVal!=null) ? TOMBSTONE : V;
+}
+```
+
+Two details worth noticing:
+
+1. **values monotonically go from null → non-null**, and deletion is represented by `TOMBSTONE`
+2. size is maintained via counters (`_size`, `_slots`) that avoid global locking
+
+### Resizing: Cooperative Copying with `_newkvs`, `_copyIdx`, `_copyDone`
+
+The resize protocol lives in `CHM`.
+
+Starting a resize is the familiar "publish a new table once" pattern:
+
+```java
+volatile Object[] _newkvs;
+
+Object[] newkvs = _newkvs; // VOLATILE READ
+if( newkvs != null ) {
+    return newkvs;
+}
+
+// allocate and then CAS it in
+if( CAS_newkvs(newkvs) ) {
+    topmap.rehash();
+}
+```
+
+fter `_newkvs` becomes non-null, all threads can see that a new table exists, and the rest becomes cooperative copying.
+
+Work distribution uses two counters:
+
+- `_copyIdx`: claims chunks of copy work
+- `_copyDone`: tracks how many slots are confirmed-copied (used for promotion
+
+```java
+volatile long _copyIdx = 0;
+volatile long _copyDone= 0;
+```
+
+Each helper thread claims a chunk (`MIN_COPY_WORK`) and repeatedly calls `copy_slot(...)`.
+
+```java
+for( int i=0; i<MIN_COPY_WORK; i++ )
+  if( copy_slot(topmap,(copyidx+i)&(oldlen-1),oldkvs,newkvs) )
+    workdone++;
+
+if( workdone > 0 )
+  copy_check_and_promote(topmap, oldkvs, workdone);
+
+```
+
+Promotion is exactly what you'd expect: once copying is complete, swap `_kvs` at the top-level:
+
+```java
+if( copyDone+workdone == oldlen &&
+    topmap._kvs == oldkvs &&
+    topmap.CAS_kvs(oldkvs,_newkvs) ) {
+  topmap._last_resize_milli = System.currentTimeMillis();
+}
+```
+
+This resembles `ConcurrentHashMap`'s cooperative resize in spirit, but the mechanism is different:
+
+- CHM redirects bins via forwarding nodes
+- NBHM redirects via per-slot `Prime` markers and table pointers (`_newkvs`)
+
+### `copy_slot`: The Heart of the Protocol
+
+`copy_slot` is where the "Prime trick" pays off.
+
+The algorithm is:
+
+1. **prevent fresh updates in the old table** by forcing empty keys to `TOMBSTONE` (minor optimization)
+2. **box the old value** into `Prime(oldVal)` so nobody can update it in-place
+3. copy the unboxed value into the new table, but only if it was `null` there
+4. slam the old value down to `TOMBPRIME` so others stop trying to copy it
+
+```java
+Object oldval = val(oldkvs,idx);
+while( !(oldval instanceof Prime) ) {
+  final Prime box = (oldval == null || oldval == TOMBSTONE) ? TOMBPRIME : new Prime(oldval);
+  if( CAS_val(oldkvs,idx,oldval,box) ) {
+    if( box == TOMBPRIME ) return true;
+    oldval = box;
+    break;
+  }
+  oldval = val(oldkvs,idx);
+}
+
+...
+boolean copied_into_new =
+  (putIfMatch(topmap, newkvs, key, old_unboxed, null) == null);
+
+...
+while( !CAS_val(oldkvs,idx,oldval,TOMBPRIME) )
+  oldval = val(oldkvs,idx);
+```
+
+Two core invariants fall out of this:
+
+- Once a value is boxed (`Prime`), the old slot becomes effectively read-only.
+- Promotion is safe because NBHM can count **null → non-null transitions** in the new table (i.e., confirmed copies).
+
+### The Trade-off: Non-blocking ≠ No Contention
+
+NBHM avoids explicit locks, but it does not avoid contention—it relocates it:
+
+- from "threads queue behind a lock"
+- to "threads fight on cache lines via CAS and coherence traffic"
+
+You can see the hint of this in the design: frequent volatile reads, frequent CAS on shared arrays, and a resize protocol that intentionally causes many threads to touch shared counters (`_copyIdx`, `_copyDone`, `_slots`, `_size`).
+
+This matters because it directly intersects with SwissTable-style metadata. If you try to bolt on high-frequency metadata writes (control bytes updated on every operation), you can create exactly the failure mode people warned about: **false sharing at cache-line granularity**, but now on a code path that is already coherence-heavy.
+
 ---
 
-## Closing Thoughts
+## 5) Closing Thoughts
 
-Global locking, sharding, and `ConcurrentHashMap` outline three very different ways to approach concurrency in a hash map. Each draws its contention boundary in a different place, and each pays for that choice with a different mix of simplicity, scalability, and implementation complexity.
+Global locking, sharding, `ConcurrentHashMap`, and Cliff Click's `NonBlockingHashMap` (NBHM) outline four very different ways to approach concurrency in a hash map. Each draws its contention boundary in a different place, and each pays for that choice with a different mix of simplicity, scalability, and implementation complexity.
 
 The important takeaway is not that one approach is universally better, but that **the shape of the data structure largely determines which concurrency strategies are viable**. Techniques that work well for bucketed, pointer-based maps do not always translate cleanly to open-addressing designs, and vice versa.
 
-In the next part, I'll switch gears and look at how these ideas informed the design of **SwissMap**. Rather than re-implementing any one of these strategies wholesale, SwissMap selectively borrows from them—combining sharding, optimistic fast paths, and carefully chosen locking boundaries to fit the constraints of a SwissTable-style layout.
+In the next part, I'll switch gears and look at how these ideas informed the design of **SwissMap**. Rather than re-implementing any one of these strategies wholesale, SwissMap selectively borrows from them—combining sharding, optimistic fast paths, and carefully chosen locking boundaries (while staying mindful of NBHM-style coherence costs) to fit the constraints of a SwissTable-style layout.
 
 ## P.S. If you want the code
 
