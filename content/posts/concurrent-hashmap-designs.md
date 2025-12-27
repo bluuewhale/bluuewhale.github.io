@@ -85,9 +85,23 @@ In HotSpot, every Java object starts with a small header. Conceptually, it conta
 
 Traditionally, [HotSpot has used this mark word to encode several kinds of runtime metadata](https://wiki.openjdk.org/spaces/HotSpot/pages/11829266/Synchronization)—things like the identity hash code, GC age/marking bits, and, crucially for us, **locking state**.
 
-The diagram below, adapted from [JP Bempel's excellent write-up](https://jpbempel.github.io/2013/03/25/lock-lock-lock-enter.html), shows the rough layout and how those bits get repurposed depending on the state:
+The diagram below, adapted from [JP Bempel's excellent write-up](https://jpbempel.github.io/2013/03/25/lock-lock-lock-enter.html), shows the rough layout and how those bits get repurposed depending on the state.  The exact lock states and header layout vary across HotSpot versions (for example, biased locking has been removed in recent JDKs); the diagram is provided for intuition, not as a current spec.
 
 ![markword.png](/images/concurrent-hashmap-designs/markword.png)
+
+For reference, the current [HotSpot source comments](https://github.com/openjdk/jdk/blob/master/src/hotspot/share/oops/markWord.hpp#L57) describe the mark word states roughly as follows:
+```cpp
+//  - the two lock bits are used to describe three states: locked/unlocked and monitor.
+//
+//    [ptr             | 00]  locked    // ptr points to real header on stack (stack-locking)
+//    [header          | 00]  locked    // locked regular object header (fast-locking)
+//    [header          | 01]  unlocked  // regular object header
+//    [ptr             | 10]  monitor   // inflated lock (UseObjectMonitorTable == false)
+//    [header          | 10]  monitor   // inflated lock (UseObjectMonitorTable == true)
+//    [ptr             | 11]  marked    // used for GC marking
+```
+
+The important takeaway here is not the exact bit patterns, but the idea that modern HotSpot supports multiple locking representations (stack locks, inflated monitors, and optional ObjectMonitorTable indirection), and that these details have evolved over time.
 
 A *thin lock* (lightweight lock) uses that header space to avoid allocating a heavyweight monitor in the common case. The basic idea is simple: when a thread enters a `synchronized` block, the VM creates a **lock record** in the thread's stack frame, and then tries to "install" a pointer to that lock record into the object's header via an atomic **compare-and-swap (CAS)**. If the CAS succeeds, the thread owns the lock.
 
