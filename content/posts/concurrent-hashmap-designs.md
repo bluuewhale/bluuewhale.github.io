@@ -443,7 +443,7 @@ If the bin isn't empty, the next question is whether it's even safe to insert th
 
 In the normal case (not `MOVED`), `put()` does a quick check on the bin's head node as a small fast path. But if it can't resolve the update immediately, it falls back to the contended path: it synchronizes on the bin's first node and performs the insertion while holding that monitor. This is the key design point—locking is scoped to a single bin, not the entire map.
 
-Inside that tiny critical section, the actual insertion depends on how the bin is represented. If it's still a linked list, it walks the nodes in order, updating the value if the key already exists or appending a new node otherwise. If the bin has been treeified, the head points to a `TreeBin` wrapper and the operation becomes a red–black tree lookup/insert over `TreeNode`s instead. Either way, the important part is that contention is localized: threads inserting into different bins can proceed independently, and even heavy contention only serializes threads that collide on the same bin.
+Inside that tiny critical section, the actual insertion depends on how the bin is represented. If it's still a linked list, it walks the nodes in order, updating the value if the key already exists or appending a new node otherwise. If the bin has been treeified, the head points to a `TreeBin` wrapper and the operation becomes a red–black tree lookup/insert over `TreeNode` instead. Either way, the important part is that contention is localized: threads inserting into different bins can proceed independently, and even heavy contention only serializes threads that collide on the same bin.
 
 ```java
 final V putVal(K key, V value, boolean onlyIfAbsent) {
@@ -736,7 +736,7 @@ Unsafe is therefore best understood not as a general-purpose performance hammer,
 
 `ConcurrentHashMap` has an interesting problem to solve: it needs some notion of "how many elements are in the map," but it can't afford to turn every `put()` into a scalability bottleneck. The solution it uses is essentially a **specialized, inlined version of LongAdder's core idea**: keep a striped set of counters so increments don't all fight over the same cache line.
 
-Concretely, CHM maintains a `baseCount` plus an optional `CounterCell[]` array. Updates try to hit the fast path first (CAS on the base), and when contention is detected, the map "fans out" into multiple `CounterCell`s so different threads can increment different cells concurrently. The source comment explicitly calls this "a specialization of LongAdder," and notes that it relies on contention-sensing to decide when to create more cells.
+Concretely, CHM maintains a `baseCount` plus an optional `CounterCell[]` array. Updates try to hit the fast path first (CAS on the base), and when contention is detected, the map "fans out" into multiple `CounterCell` so different threads can increment different cells concurrently. The source comment explicitly calls this "a specialization of LongAdder," and notes that it relies on contention-sensing to decide when to create more cells.
 
 The catch is exactly what you wrote: **updates are cheap, but an accurate read is not**. To compute the current size, CHM has to do `baseCount + sum(counterCells[i])`, which touches a bunch of distinct memory locations:
 
@@ -814,7 +814,7 @@ private final void addCount(long x, int check) {
 
 `ConcurrentHashMap` also has a distinctive mechanism for resizing: **cooperative resize**. Instead of making a single thread perform the entire rehash/transfer in one long, monolithic step, CHM spreads the work across multiple threads. Threads doing ordinary operations—`put`, `remove`, and even some reads—can detect that a resize is in progress and then help move a small chunk of bins into the new table. In effect, the resize is completed **in parallel**, incrementally, by the threads that are already interacting with the map.
 
-This design has a few practical benefits. It avoids a stop-the-world style "everything stalls while we resize" phase, and it prevents one unlucky thread from paying the entire resize cost alone. More importantly, even if a resize takes a while under sustained updates, CHM can install **`ForwardingNode`s** to redirect operations toward the new table, which helps keep the map responsive and reduces the risk of tail-latency blowups.
+This design has a few practical benefits. It avoids a stop-the-world style "everything stalls while we resize" phase, and it prevents one unlucky thread from paying the entire resize cost alone. More importantly, even if a resize takes a while under sustained updates, CHM can install **`ForwardingNode`** to redirect operations toward the new table, which helps keep the map responsive and reduces the risk of tail-latency blowups.
 
 I'll stop here for now—CHM's resize protocol is deep enough that it deserves its own dedicated section, and including all the details here would make this part unnecessarily long.
 
