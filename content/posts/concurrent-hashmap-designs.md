@@ -887,6 +887,9 @@ In particular, `get()` never walks through `CHM` to find entries. That work is d
 
 These track how many live key/value pairs exist and how many key slots have ever been claimed (important with tombstones)
 
+Importantly, these are implemented as `Counter`s backed by `ConcurrentAutoTable`, which shards updates across multiple internal cells (`LongAdder`/`CounterCell`-style) to minimize contention under concurrent increments.
+
+
 ```java
 private final Counter _size;
 private final Counter _slots;
@@ -1276,16 +1279,13 @@ Two core invariants fall out of this:
 - Once a value is boxed (`Prime`), the old slot becomes effectively read-only.
 - Promotion is safe because NBHM can count **null → non-null transitions** in the new table (i.e., confirmed copies).
 
-### The Trade-off: Non-blocking ≠ No Contention
+### The Trade-off: Non-blocking != No Contention
 
-NBHM avoids explicit locks, but it does not avoid contention—it relocates it:
+NBHM avoids explicit locks, but it does not eliminate contention—it mostly **moves** it. Instead of "threads queue behind a lock," contention shows up as cache-line ownership traffic from CAS, coherence, and the occasional global coordination step.
 
-- from "threads queue behind a lock"
-- to "threads fight on cache lines via CAS and coherence traffic"
+That said, the implementation is clearly trying to **keep that contention from concentrating in one place**. The high-frequency counters (`_slots`, `_size`) are not single hot variables; they are `Counter`s backed by `ConcurrentAutoTable`, which shards updates in a `LongAdder`/`CounterCell`-like way. And the resize coordination counters (`_copyIdx`, `_copyDone`) are not bumped on every copied entry—they advance in coarse chunks (e.g., per ~1024 slots of copy work), keeping the shared-state traffic relatively infrequent.
 
-You can see the hint of this in the design: frequent volatile reads, frequent CAS on shared arrays, and a resize protocol that intentionally causes many threads to touch shared counters (`_copyIdx`, `_copyDone`, `_slots`, `_size`).
-
-This matters because it directly intersects with SwissTable-style metadata. If you try to bolt on high-frequency metadata writes (control bytes updated on every operation), you can create exactly the failure mode people warned about: **false sharing at cache-line granularity**, but now on a code path that is already coherence-heavy.
+This matters because it directly intersects with SwissTable-style metadata. If you bolt on *high-frequency* metadata writes (e.g., control bytes updated on every operation), you can still recreate the failure mode people warned about: false sharing at cache-line granularity—now layered on top of a code path that already pays for CAS and coherence under contention.
 
 ---
 
