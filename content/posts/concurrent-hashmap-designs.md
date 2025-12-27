@@ -101,8 +101,6 @@ For reference, the current [HotSpot source comments](https://github.com/openjdk/
 //    [ptr             | 11]  marked    // used for GC marking
 ```
 
-The important takeaway here is not the exact bit patterns, but the idea that modern HotSpot supports multiple locking representations (stack locks, inflated monitors, and optional ObjectMonitorTable indirection), and that these details have evolved over time.
-
 A *thin lock* (lightweight lock) uses that header space to avoid allocating a heavyweight monitor in the common case. The basic idea is simple: when a thread enters a `synchronized` block, the VM creates a **lock record** in the thread's stack frame, and then tries to "install" a pointer to that lock record into the object's header via an atomic **compare-and-swap (CAS)**. If the CAS succeeds, the thread owns the lock.
 
 This is why thin locking is usually cheap: in the uncontended case, it's essentially a couple of predictable memory operations plus a single atomic instruction—no kernel involvement, no parked threads, and no heavyweight monitor bookkeeping.
