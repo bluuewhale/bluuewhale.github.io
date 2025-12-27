@@ -919,7 +919,7 @@ private final boolean tableFull(int reprobe_cnt, int len)
 
 In short, `CHM` is where NBHM centralizes **shared state that must be seen consistently across threads**, but that is *orthogonal* to the actual key/value lookup logic.
 
-### **Hash Memoization: Avoiding Expensive `equals()` on the Hot Path**
+### Hash Memoization: Avoiding Expensive `equals()` on the Hot Path
 
 One small but telling detail in `NonBlockingHashMap` is the presence of a dedicated `hashes[]` array:
 
@@ -961,7 +961,7 @@ In contrast, reading `hashes[idx]` is just a single load from a dense `int[]`, w
 > If you want a concrete example of how much `Objects.equals` can hurt hash map performance on the hot path, I wrote up a detailed case study in [my previous post](https://bluuewhale.github.io/posts/further-optimizing-my-java-swiss-table/#2-why-didnt-hotspot-c2-compiler-devirtualize-objectsequalsa-b).
 
 
-### **A Familiar Idea if You've Seen SwissTable**
+### A Familiar Idea if You've Seen SwissTable
 
 Conceptually, this optimization is strikingly similar to SwissTable's design.
 
