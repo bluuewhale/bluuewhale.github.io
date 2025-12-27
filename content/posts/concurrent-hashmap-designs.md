@@ -827,3 +827,9 @@ Global locking, sharding, and `ConcurrentHashMap` outline three very different w
 The important takeaway is not that one approach is universally better, but that **the shape of the data structure largely determines which concurrency strategies are viable**. Techniques that work well for bucketed, pointer-based maps do not always translate cleanly to open-addressing designs, and vice versa.
 
 In the next part, I'll switch gears and look at how these ideas informed the design of **SwissMap**. Rather than re-implementing any one of these strategies wholesale, SwissMap selectively borrows from them—combining sharding, optimistic fast paths, and carefully chosen locking boundaries to fit the constraints of a SwissTable-style layout.
+
+## P.S. If you want the code
+
+This post is basically the narrative version of an experiment I'm building in public: [**HashSmith**](https://github.com/bluuewhale/hash-smith), a small collection of fast, memory-efficient hash tables for the JVM.
+
+`ConcurrentSwissMap` is still a work in progress. I'm planning to iterate on the design a bit more, run a proper set of benchmarks, and share the results in a follow-up post once things stabilize.
