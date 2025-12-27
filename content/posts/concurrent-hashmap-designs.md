@@ -810,8 +810,6 @@ private final void addCount(long x, int check) {
 }
 ```
 
----
-
 ### Cooperative Resize: Sharing the Rehash Work
 
 `ConcurrentHashMap` also has a distinctive mechanism for resizing: **cooperative resize**. Instead of making a single thread perform the entire rehash/transfer in one long, monolithic step, CHM spreads the work across multiple threads. Threads doing ordinary operations—`put`, `remove`, and even some reads—can detect that a resize is in progress and then help move a small chunk of bins into the new table. In effect, the resize is completed **in parallel**, incrementally, by the threads that are already interacting with the map.
@@ -819,6 +817,8 @@ private final void addCount(long x, int check) {
 This design has a few practical benefits. It avoids a stop-the-world style "everything stalls while we resize" phase, and it prevents one unlucky thread from paying the entire resize cost alone. More importantly, even if a resize takes a while under sustained updates, CHM can install **`ForwardingNode`s** to redirect operations toward the new table, which helps keep the map responsive and reduces the risk of tail-latency blowups.
 
 I'll stop here for now—CHM's resize protocol is deep enough that it deserves its own dedicated section, and including all the details here would make this part unnecessarily long.
+
+---
 
 ## Closing Thoughts
 
