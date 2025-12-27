@@ -887,13 +887,13 @@ In particular, `get()` never walks through `CHM` to find entries. That work is d
 
 These track how many live key/value pairs exist and how many key slots have ever been claimed (important with tombstones)
 
-Importantly, these are implemented as `Counter`s backed by `ConcurrentAutoTable`, which shards updates across multiple internal cells (`LongAdder`/`CounterCell`-style) to minimize contention under concurrent increments.
-
-
 ```java
 private final Counter _size;
 private final Counter _slots;
 ```
+
+Importantly, these are implemented as `Counter`s backed by `ConcurrentAutoTable`, which shards updates across multiple internal cells (LongAdder/CounterCell-style) to minimize contention under concurrent increments.
+
 
 **Resize state**
 
