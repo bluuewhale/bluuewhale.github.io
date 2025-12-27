@@ -1,7 +1,7 @@
 +++
 date = '2025-12-27T14:30:37+09:00'
 draft = false
-title = "Concurrent Hash Map Designs: Global Locks, Sharding, ConcurrentHashMap, and NonBlockingHashMap"
+title = "Concurrent Hash Table Designs: Synchronized, Sharding, ConcurrentHashMap, and NonBlockingHashMap"
 
 # SEO / Social
 description = "A tour of common concurrent hash map designs—global locks, sharding/lock striping, Java's ConcurrentHashMap, and Cliff Click's NonBlockingHashMap (NBHM)—through the lens of contention and performance."
@@ -28,7 +28,7 @@ Before jumping straight into implementation, it's worth stepping back and studyi
 
 In this part, I'll walk through the most common strategies used in real-world concurrent hash maps, and highlight the core trade-offs that shape their performance and complexity.
 
-## 1) Global Lock (the `synchronizedMap` approach)
+## 1) Global Lock (the `synchronized` approach)
 
 The most straightforward way to make a hash map thread-safe is to wrap the entire implementation with a single global lock, effectively placing the same synchronization barrier around every public operation.
 
