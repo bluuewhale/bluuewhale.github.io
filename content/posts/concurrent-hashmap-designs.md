@@ -446,7 +446,7 @@ Viewed from a high level, CHM is effectively applying **sharding at the data lev
 
 ### How `ConcurrentHashMap.put()` Works
 
-`ConcurrentHashMap.put()` is built around a simple idea: try to finish the operation with a cheap, lock-free step first, and only if that fails, fall back to locking—and even then, lock as little as possible.
+`ConcurrentHashMap.put()` is built around a simple idea: try to finish the operation with a cheap, CAS step first, and only if that fails, fall back to locking—and even then, lock as little as possible.
 
 It starts by hashing the key and computing the target bin index using a power-of-two mask (`(n - 1) & hash`). If the corresponding slot in the table is empty, `put()` takes the fastest route: it attempts to install the first `Node` into that bin with a single CAS. When this succeeds, the insertion completes without taking any locks at all.
 
