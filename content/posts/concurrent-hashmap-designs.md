@@ -749,7 +749,7 @@ Unsafe is therefore best understood not as a general-purpose performance hammer,
 
 Concretely, CHM maintains a `baseCount` plus an optional `CounterCell[]` array. Updates try to hit the fast path first (CAS on the base), and when contention is detected, the map "fans out" into multiple `CounterCell` so different threads can increment different cells concurrently. The source comment explicitly calls this "a specialization of LongAdder," and notes that it relies on contention-sensing to decide when to create more cells.
 
-The catch is exactly what you wrote: **updates are cheap, but an accurate read is not**. To compute the current size, CHM has to do `baseCount + sum(counterCells[i])`, which touches a bunch of distinct memory locations:
+The key trade-off is that updates are cheap, but accurate reads are expensive. To compute the current size, CHM has to do `baseCount + sum(counterCells[i])`, which touches a bunch of distinct memory locations:
 
 ```java
 final long sumCount() {
