@@ -603,7 +603,7 @@ If you ignore that variance and just plug λ = 0.5 into the Poisson PMF, you get
 
 This is the statistical justification for CHM's "bin-local" design. Even though updates may occasionally synchronize on a bin head (and bins start out as linked lists), in the common case—where hashes are sufficiently well spread—**most bins stay very short**, and contention is naturally limited to a tiny fraction of the table.
 
-Treeification, in that framing, is not really about improving the *average* case of healthy workloads. It only becomes relevant once a bin grows past an unusually large threshold (default **8**), and even then it's treated more like a last resort than a default strategy. In practice, you can think of it as a **defensive mechanism**: it caps performance degradation in scenarios where collisions become abnormally severe—bad `hashCode()` implementations, skewed key distributions, or deliberate hash-flooding-style behavior—rather than something CHM expects to rely on routinely.
+Treeification, in that framing, is not really about improving the *average* case of healthy workloads. It only becomes relevant once a bin grows past an unusually large threshold (default 8), and even then it's treated more like a last resort than a default strategy. In practice, you can think of it as a **defensive mechanism**: it caps performance degradation in scenarios where collisions become abnormally severe—bad `hashCode()` implementations, skewed key distributions, or deliberate hash-flooding-style behavior—rather than something CHM expects to rely on routinely.
 
 ### A Detour into `Unsafe`: How CHM Touches `table[]` Without "Normal" Java Array Access
 
