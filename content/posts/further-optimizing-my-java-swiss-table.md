@@ -13,6 +13,10 @@ alt = 'Java SwissTable optimization: profiling and SWAR probing'
 hiddenInSingle = true
 +++
 
+### Discussions
+- [Reddit](https://www.reddit.com/r/programming/comments/1pp0wg2/further_optimizing_my_java_swisstable_profile/)
+---
+
 ## Part 2: optimizing the hot path (and finding a weird villain)
 
 > *"Why Objects.equals() showed up in the profile—and why SWAR beat the Vector API on ARM (and x86).*
