@@ -20,6 +20,11 @@ relative = false
 hiddenInSingle = true
 +++
 
+### Discussions
+- [Hacker News](https://news.ycombinator.com/item?id=46402132)
+- [Reddit](https://www.reddit.com/r/programming/comments/1pwr1p2/concurrent_hash_map_designs_synchronized_sharding/)
+---
+
 The next milestone is to build a fully thread-safe hash map.
 
 Up to this point, the focus has been entirely on single-threaded performance: minimizing memory overhead, improving cache locality, and squeezing out every last bit of throughput from the underlying data layout. However, real-world applications rarely stay single-threaded. To be practically useful, a hash map must behave correctly—and efficiently—under concurrent access.

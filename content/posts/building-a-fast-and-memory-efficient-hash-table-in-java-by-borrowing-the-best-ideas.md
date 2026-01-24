@@ -13,6 +13,11 @@ alt = 'Memory footprint comparison for the Java SwissTable experiment'
 hiddenInSingle = true
 +++
 
+### Discussions
+- [Hacker News](hthttps://news.ycombinator.com/item?id=46256325)
+- [Reddit](https://www.reddit.com/r/programming/comments/1plbpzg/building_a_fast_memoryefficient_hash_table_in/)
+---
+
 One day, I ran into SwissTable—the kind of design that makes you squint, grin, and immediately regret every naive linear-probing table you've ever shipped.
 
 This post is the story of how I tried to bring that same "why is this so fast?" feeling into Java. It's part deep dive, part engineering diary, and part cautionary tale about performance work.  
