@@ -14,7 +14,7 @@ hiddenInSingle = true
 +++
 
 ### Discussions
-- [Hacker News](hthttps://news.ycombinator.com/item?id=46256325)
+- [Hacker News](https://news.ycombinator.com/item?id=46256325)
 - [Reddit](https://www.reddit.com/r/programming/comments/1plbpzg/building_a_fast_memoryefficient_hash_table_in/)
 ---
 
