@@ -1,0 +1,16 @@
+{{- /* Head custom content area start */ -}}
+{{- if or .Params.math site.Params.math }}
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']]
+  },
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+  }
+};
+</script>
+<script defer src="/js/mathjax/tex-mml-chtml.js"></script>
+{{- end }}
+{{- /* Head custom content area end */ -}}
