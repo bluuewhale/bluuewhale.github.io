@@ -8,6 +8,10 @@ tags = ['Hash Table', 'SwissTable', 'Java', 'Performance', 'AI', 'JMH', 'SWAR']
 keywords = ['auto-optimize', 'ILP hoisting', 'SWAR', 'tombstone specialization', 'autonomous optimization']
 +++
 
+**Discussion:** [Reddit (r/java)](https://www.reddit.com/r/java/comments/1scqm1x/hashsmith_part_3_i_automated_my_way_to_a_27/) · [Hacker News](https://news.ycombinator.com/item?id=47645231)
+
+---
+
 > **This is Part 3 of a series on building a high-performance hash table for the JVM.**
 > - Part 1 — [Building a Fast, Memory-Efficient Hash Table in Java (by borrowing the best ideas)](/posts/building-a-fast-and-memory-efficient-hash-table-in-java-by-borrowing-the-best-ideas/): designing a SwissTable-style map from scratch — control bytes, SWAR probing, and why open addressing beats chaining for cache locality.
 > - Part 2 — [Further Optimizing my Java SwissTable: Profile Pollution and SWAR Probing](/posts/further-optimizing-my-java-swiss-table/): hunting down a surprising `Objects.equals()` hotspot, and why SWAR beat the Vector API on both ARM and x86.
@@ -32,7 +36,7 @@ I'll get to what auto-optimize is and how it came to be. But first, let me walk 
 ## TL;DR
 
 ```
-/auto-optimize "I want to optimize the get/put performance of the SwissMap implementation."
+/auto-optimize I want to optimize the get/put performance of the SwissMap implementation.
 ```
 
 - 1 prompt. ~3 hours of autonomous profiling, planning, and benchmarking.
@@ -447,3 +451,4 @@ The code, the plans, the dropped experiments, the noise-dominated runs that got 
 
 *HashSmith source: [github.com/bluuewhale/hash-smith](https://github.com/bluuewhale/hash-smith)*  
 *auto-optimize plugin: [github.com/bluuewhale/auto-optimize](https://github.com/bluuewhale/auto-optimize)*
+
