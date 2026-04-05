@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* Fonts */
+/* ===== FONTS ===== */
 body {
     font-family: 'Source Serif 4', Georgia, serif;
 }
@@ -9,7 +9,7 @@ code, pre, kbd, samp {
     font-family: 'JetBrains Mono', 'Courier New', monospace;
 }
 
-/* Accent color override */
+/* ===== COLOR VARIABLES ===== */
 :root {
     --theme: #fff;
     --entry: #fff;
@@ -20,6 +20,10 @@ code, pre, kbd, samp {
     --hljs-bg: #f6f8fa;
     --code-bg: #f6f8fa;
     --border: rgba(0, 0, 0, 0.12);
+    --accent: #5c6bc0;
+    --accent-hover: #3f51b5;
+    --delta-gain: #2e7d32;
+    --delta-loss: #c62828;
 }
 
 .dark {
@@ -32,31 +36,166 @@ code, pre, kbd, samp {
     --hljs-bg: #2a2b2d;
     --code-bg: #2a2b2d;
     --border: rgba(255, 255, 255, 0.12);
+    --delta-gain: #66bb6a;
+    --delta-loss: #ef5350;
 }
 
-/* Indigo accent */
+/* ===== LINKS / ACCENT ===== */
 a,
 .post-title a:hover,
 .nav-link:hover {
-    color: #5c6bc0;
+    color: var(--accent);
 }
 
 a:hover {
-    color: #3f51b5;
+    color: var(--accent-hover);
 }
 
 .post-tags a,
 .breadcrumbs a {
-    color: #5c6bc0;
+    color: var(--accent);
 }
 
 .post-tags a:hover {
-    background: #5c6bc0;
+    background: var(--accent);
     color: #fff;
-    border-color: #5c6bc0;
+    border-color: var(--accent);
 }
 
-/* Social icons */
 .social-icons a:hover svg {
-    fill: #5c6bc0;
+    fill: var(--accent);
+}
+
+/* ===== HEADING HIERARCHY ===== */
+
+/* h2: accent left bar — section-level landmarks */
+.post-content h2 {
+    font-size: 1.6rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    border-left: 3px solid var(--accent);
+    padding-left: 0.7rem;
+    margin-top: 2.75rem;
+    margin-bottom: 0.75rem;
+}
+
+/* h3: subdued, clearly subordinate to h2 */
+.post-content h3 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--secondary);
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+
+/* ===== BLOCKQUOTES ===== */
+
+/* Override PaperMod's --primary border with accent color + subtle tint */
+.post-content blockquote {
+    border-inline-start: 3px solid var(--accent);
+    background: rgba(92, 107, 192, 0.05);
+    border-radius: 0 4px 4px 0;
+    padding: 0.6rem 1rem 0.6rem 1.1rem;
+    color: var(--secondary);
+    font-style: italic;
+}
+
+/* ===== INLINE CODE ===== */
+
+/* Add a visible border so inline code is distinct from body text */
+.post-content code {
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    padding: 3px 6px;
+    font-size: 0.8em;
+}
+
+/* Don't apply border to code inside pre blocks */
+.post-content pre code {
+    border: none;
+    border-radius: 0;
+    padding: 10px;
+}
+
+/* ===== TABLES ===== */
+
+/* Wrap tables for horizontal scroll on narrow viewports */
+.post-content table {
+    display: block;
+    overflow-x: auto;
+    border-collapse: collapse;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-size: 0.875rem;
+    width: 100%;
+}
+
+/* Header row */
+.post-content table th {
+    background: var(--code-bg);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--secondary);
+    padding: 0.55rem 0.875rem;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+}
+
+/* Data cells */
+.post-content table:not(.highlighttable, .highlight table, .gist .highlight) td {
+    padding: 0.5rem 0.875rem;
+    border-bottom: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+    vertical-align: middle;
+}
+
+/* Last row: no bottom border */
+.post-content table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Alternating rows */
+.post-content table tbody tr:nth-child(even) td {
+    background: rgba(0, 0, 0, 0.025);
+}
+
+.dark .post-content table tbody tr:nth-child(even) td {
+    background: rgba(255, 255, 255, 0.025);
+}
+
+/* Row hover */
+.post-content table tbody tr:hover td {
+    background: rgba(92, 107, 192, 0.06);
+}
+
+/* First column: label-style, serif */
+.post-content table:not(.highlighttable, .highlight table, .gist .highlight) td:first-child {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 0.875rem;
+    font-variant-numeric: normal;
+    font-style: italic;
+    white-space: nowrap;
+}
+
+/* Image tables (benchmark charts): reset to neutral */
+.post-content table td:has(img) {
+    font-family: inherit;
+    padding: 0.25rem;
+}
+
+/* Delta coloring — applied by extend_footer.html script */
+.post-content td.delta-gain {
+    color: var(--delta-gain);
+    font-weight: 600;
+}
+
+.post-content td.delta-loss {
+    color: var(--delta-loss);
+    font-weight: 500;
 }

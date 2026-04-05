@@ -1,0 +1,21 @@
+<script>
+(function () {
+  // Color benchmark delta cells that contain percentage changes.
+  // Negative % = improvement (gain), positive % = regression (loss).
+  document.addEventListener('DOMContentLoaded', function () {
+    var cells = document.querySelectorAll('.post-content table tbody td');
+    // Matches optional leading whitespace, optional bold markers, a sign, digits, %, bold close
+    var pct = /^[*\s]*([-+])\d+(\.\d+)?%[*\s]*$/;
+    cells.forEach(function (td) {
+      var text = td.textContent.trim();
+      var m = text.match(/^([-+])\d+(\.\d+)?%$/);
+      if (!m) return;
+      if (m[1] === '-') {
+        td.classList.add('delta-gain');
+      } else {
+        td.classList.add('delta-loss');
+      }
+    });
+  });
+}());
+</script>
