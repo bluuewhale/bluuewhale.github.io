@@ -14,7 +14,7 @@ image = 'images/debugging-false-sharing/image4.png'
 hiddenInSingle = true
 +++
 
-> This post summarizes Netflix's tech blog post [Seeing through hardware counters: a journey to threefold performance increase](https://netflixtechblog.com/seeing-through-hardware-counters-a-journey-to-threefold-performance-increase-2721924a2822), with some background I added along the way.
+> This post is my own summary of Netflix's tech blog post [Seeing through hardware counters: a journey to threefold performance increase](https://netflixtechblog.com/seeing-through-hardware-counters-a-journey-to-threefold-performance-increase-2721924a2822), written the way I understood it, with some background I added along the way. The original post is the authoritative source, so check it directly for exact figures and details.
 
 ## The Problem
 

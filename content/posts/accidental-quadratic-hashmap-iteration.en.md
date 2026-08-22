@@ -14,6 +14,8 @@ image = 'images/accidental-quadratic-hashmap-iteration/image3.png'
 hiddenInSingle = true
 +++
 
+> This post is my own write-up of [Rust hash iteration+reinsertion](https://accidentallyquadratic.tumblr.com/post/153545455987/rust-hash-iteration-reinsertion) and the related Rust issue/PR, written the way I understood them. The original is the authoritative source, so check it directly for the exact details.
+
 I want to walk through an interesting bug that showed up in Rust's `HashMap`. The code looks completely ordinary, yet under the right conditions, an operation that should be O(n) blows up to O(n²).
 
 ## Reproducing the Bug

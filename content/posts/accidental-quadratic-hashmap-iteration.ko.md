@@ -13,6 +13,8 @@ image = 'images/accidental-quadratic-hashmap-iteration/image3.png'
 hiddenInSingle = true
 +++
 
+> 이 글은 [Rust hash iteration+reinsertion](https://accidentallyquadratic.tumblr.com/post/153545455987/rust-hash-iteration-reinsertion) 글과 관련 Rust 이슈/PR을 제가 이해한 대로 정리한 글입니다. 원문이 정확한 소스이니, 정확한 내용은 원문을 확인해주세요.
+
 Rust의 `HashMap`에서 발생했던 흥미로운 버그를 하나 소개하려고 합니다. 겉보기에는 지극히 평범한 코드인데, 특정 조건이 갖춰지면 O(n)이어야 할 연산이 O(n²)으로 폭발합니다.
 
 ## 버그 재현

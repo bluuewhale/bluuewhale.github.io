@@ -13,7 +13,7 @@ image = 'images/debugging-false-sharing/image4.png'
 hiddenInSingle = true
 +++
 
-> 이 글은 넷플릭스 테크 블로그의 [Seeing through hardware counters: a journey to threefold performance increase](https://netflixtechblog.com/seeing-through-hardware-counters-a-journey-to-threefold-performance-increase-2721924a2822)를 요약하고, 관련 배경 지식을 제 나름대로 정리해 덧붙인 글입니다.
+> 이 글은 넷플릭스 테크 블로그의 [Seeing through hardware counters: a journey to threefold performance increase](https://netflixtechblog.com/seeing-through-hardware-counters-a-journey-to-threefold-performance-increase-2721924a2822)를 제가 이해한 대로 요약하고, 관련 배경 지식을 나름대로 정리해 덧붙인 글입니다. 원문이 정확한 소스이니, 세부 수치나 디테일이 궁금하시다면 반드시 원문을 확인해주세요.
 
 ## 문제 발생
 
