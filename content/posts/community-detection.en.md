@@ -67,8 +67,6 @@ Louvain, proposed in 2008, is the standard algorithm for optimizing modularity. 
 
 The algorithm stops under any of three conditions: Local Moving no longer moves any node, overall modularity stops increasing, or Aggregation no longer shrinks the graph. What comes out is a hierarchical community structure, along with which community each node belongs to at each level.
 
-![](/images/community-detection/image4.png)
-
 ## The Leiden Algorithm: Patching Louvain's Gap
 
 Louvain has a weakness. Because it optimizes purely for overall modularity, it can produce disconnected communities, groups where nodes get labeled as belonging together even though no path connects them internally. Depending on the order nodes get visited during Local Moving, this happens easily enough, leaving something that doesn't really deserve to be called a community.

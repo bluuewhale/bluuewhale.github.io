@@ -66,8 +66,6 @@ Modularity를 최적화하는 대표적인 알고리즘이 2008년 제안된 Lou
 
 종료 조건은 세 가지 중 하나입니다. Local Moving 단계에서 더 이상 노드가 옮겨지지 않거나, 전체 Modularity가 더는 증가하지 않거나, Aggregation을 거쳐도 그래프 크기가 줄어들지 않는 경우입니다. 결과물로는 계층적인 커뮤니티 구조와 각 노드가 어느 커뮤니티에 속하는지에 대한 할당 정보를 얻습니다.
 
-![](/images/community-detection/image4.png)
-
 ## Leiden 알고리즘: Louvain의 빈틈을 메우기
 
 Louvain에는 한 가지 허점이 있습니다. 이 알고리즘은 전체 Modularity를 높이는 데에만 집중하다 보니, 같은 커뮤니티로 묶인 노드들끼리 실제로는 서로 연결되어 있지 않은 disconnected community가 만들어질 수 있습니다. Local Moving 과정에서 노드를 이동시키는 순서에 따라 이런 일이 충분히 생길 수 있는데, 커뮤니티라는 이름에 걸맞지 않게 내부적으로 쪼개진 채로 남는 셈입니다.
