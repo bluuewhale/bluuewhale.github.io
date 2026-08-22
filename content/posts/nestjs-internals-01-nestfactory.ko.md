@@ -9,9 +9,9 @@ tags = ['NestJS', 'TypeScript', 'DI', 'Node.js']
 categories = ['NestJS']
 +++
 
-안녕하세요. 최근 여러가지 일들로 바쁜 나날을 보내게 되어, 오랜만에 포스팅을 하게 되었습니다.
-이번에는 NestJS 파헤치기라는 주제로 한번 글을 작성해볼까 합니다.
-최근 업무 상, NestJS를 새롭게 사용하게 되었습니다. 그 과정에서, NestJS의 코어와 관련된 부분의 지식이 부족하여 NestJS의 기능을 하는 것에 어려움을 느끼는 일이 잦아졌습니다. 그래서, 개인적인 공부를 위해 NestJS 프레임워크를 개괄적으로 살펴보는 시간을 가져보고자 마음 먹게 되었습니다.
+안녕하세요. 최근 여러 가지 일로 바쁜 나날을 보내다 보니 오랜만에 포스팅을 하게 되었습니다.
+이번에는 NestJS 파헤치기라는 주제로 글을 작성해보려 합니다.
+최근 업무상 NestJS를 새롭게 사용하게 되었는데, 그 과정에서 NestJS 코어와 관련한 지식이 부족하여 기능을 구현하는 데 어려움을 느끼는 일이 잦아졌습니다. 그래서 개인적인 공부를 위해 NestJS 프레임워크를 개괄적으로 살펴보는 시간을 가져보고자 마음먹었습니다.
 
 이번에는 그 첫 시간으로 모든 NestJS 어플리케이션의 진입점에 해당하는 `NestFactory` 클래스에 대해 살펴보도록 하겠습니다.
 
@@ -65,7 +65,7 @@ public async create<T extends INestApplication = INestApplication>(
 ```
 
 ## HttpAdapter
-처음 세 줄을 살펴보면, `NestFactory`는 내부적으로 주입받은 `HttpAdapter`를 그대로 사용하거나, 대부분의 경우(by default) `HttpAdapter` 인스턴스를 새롭게 생성합니다.
+처음 세 줄을 살펴보면, `NestFactory`는 내부적으로 주입받은 `HttpAdapter`를 그대로 사용하거나, 그렇지 않으면 기본값으로 새로운 `HttpAdapter` 인스턴스를 생성합니다.
 
 ```typescript
 // packages/core/nest-factory.ts
@@ -100,7 +100,7 @@ export class NestFactory {
 }
 ```
 
-`HttpAdapter`는 NestJS Core에서 정의하고 있는`AbstractHttpAdapter` 인터페이스를 구현하고 있는 클래스에 해당합니다. `AbstractHttpAdapter`는 http 요청을 처리하기 위한 필요한 인터페이스를 정의하고 있는 `HttpServer`인터페이스의 일부를 구현한 추상 클래스입니다.
+`HttpAdapter`는 NestJS Core에서 정의하고 있는 `AbstractHttpAdapter` 인터페이스를 구현한 클래스에 해당합니다. `AbstractHttpAdapter`는 http 요청을 처리하는 데 필요한 인터페이스를 정의하고 있는 `HttpServer` 인터페이스의 일부를 구현한 추상 클래스입니다.
 
 ```typescript
 // packages/core/adapters/http-adapters.ts
@@ -135,9 +135,9 @@ export abstract class AbstractHttpAdapter<
 }
 ```
 
-한 가지 재미있는 점은, `AbstractHttpAdapter`가 일부 메서드(ex, `use`, `get`, `post`) 메서드의 구현을 `any` 타입으로 주입받은 `instance`에 의존하고 있다는 점입니다. 어떤 분들은 메서드의 이름들이 익숙하다는 것을 이미 눈치채셨을 것 같습니다.
+한 가지 재미있는 점은, `AbstractHttpAdapter`가 일부 메서드(예: `use`, `get`, `post`)의 구현을 `any` 타입으로 주입받은 `instance`에 의존하고 있다는 점입니다. 이미 메서드 이름이 낯익다는 것을 눈치채신 분들도 있을 것 같습니다.
 
-그렇습니다. 해당 메서드는 `express`에서 미들웨어나 핸들러를 등록할 때 사용하는 메서드 명과 일치합니다. 실제로 `NestFactory`는 `express`에 의존하여 `AbstractHttpAdapter` 인터페이스를 구현한 `ExpressAdapter`를 기본값으로 사용하고 있습니다. 이러한 관점에서, `NestJS`는 일종의 `express-wrapper` 프레임워크라고도 볼 수 있습니다. `express`와 익숙하신 분들이라면 정말 반가운 일이 아닐 수 없습니다.
+그렇습니다. 해당 메서드는 `express`에서 미들웨어나 핸들러를 등록할 때 사용하는 메서드명과 일치합니다. 실제로 `NestFactory`는 `express`에 의존하여 `AbstractHttpAdapter` 인터페이스를 구현한 `ExpressAdapter`를 기본값으로 사용하고 있습니다. 이러한 관점에서 보면 `NestJS`는 일종의 `express-wrapper` 프레임워크라고도 볼 수 있습니다. `express`에 익숙하신 분들이라면 정말 반가운 일이 아닐 수 없습니다.
 
 ```typescript
 // packages/platform-express/adapters/express-adapter.ts
@@ -201,7 +201,7 @@ export class NestFactory {
 }
 ```
 
-`ApplicationConfig`는 `NestJS`에서 사용되는 글로벌 미들웨어들을 저장하고 있는 비교적 단순한 데이터 객체에 해당합니다. 최초에는 대부분 빈 값으로 초기화가 되어 있지만, 우리가 `NestApplication` 생성하는 과정에서 모든 글로벌 미들웨어들은 내부적으로 `ApplicationConfig`에 등록됩니다.
+`ApplicationConfig`는 `NestJS`에서 사용되는 글로벌 미들웨어들을 저장하고 있는 비교적 단순한 데이터 객체에 해당합니다. 처음에는 대부분 빈 값으로 초기화되어 있지만, 우리가 `NestApplication`을 생성하는 과정에서 모든 글로벌 미들웨어들은 내부적으로 `ApplicationConfig`에 등록됩니다.
 
 ```typescript
 // packages/core/application-config.ts
@@ -256,7 +256,7 @@ export class NestFactory {
 }
 ```
 
-`NestContainer`는 내부적으로는 `Module`, `ModuleTokenFactory`, `ModuleCompiler`, `ModulesContainer`, 과 같은 클래스들을 가지고 있습니다. `NestContainer`에는 이후 `DependenciesScanner`를 통해 모듈이 등록됩니다. 이와 관련된 보다 자세한 내용은 뒤에 이어서 다루도록 하겠습니다.
+`NestContainer`는 내부적으로 `Module`, `ModuleTokenFactory`, `ModuleCompiler`, `ModulesContainer`와 같은 클래스들을 가지고 있습니다. `NestContainer`에는 이후 `DependenciesScanner`를 통해 모듈이 등록됩니다. 이와 관련된 보다 자세한 내용은 뒤에 이어서 다루도록 하겠습니다.
 
 ```typescript
 // packages/core/injector/factory.ts
@@ -286,7 +286,7 @@ export class NestContainer {
 
 ### Module
 
-`Module` 클래스는 하나의 모듈에 포함되어 있는 모든 의존성(ex, `Provider`, `Controller`)을 정의하고 있는 핵심 객체입니다. 우리가 일반적으로 `@Module` 데코레이터 혹은 `forRoot()` 메서드를 통해 `DynamicModule` 형태로 등록한 모듈들은 `NestJS` 프레임워크 안에서는 `Module` 클래스로 관리됩니다.
+`Module` 클래스는 하나의 모듈에 포함되어 있는 모든 의존성(예: `Provider`, `Controller`)을 정의하고 있는 핵심 객체입니다. 우리가 일반적으로 `@Module` 데코레이터 혹은 `forRoot()` 메서드를 통해 `DynamicModule` 형태로 등록한 모듈들은 `NestJS` 프레임워크 안에서는 `Module` 클래스로 관리됩니다.
 
 ```typescript
 // packages/core/injector/module.ts
@@ -315,7 +315,7 @@ export class Module {
 
 ### ModuleTokenFactory
 
-`ModuleTokenFactory`는 간단히 말하면, 모듈들을 등록/관리 할 때 키로 사용되는 토큰(`hash`)을 생성하는 클래스입니다.
+`ModuleTokenFactory`는 간단히 말해 모듈을 등록·관리할 때 키로 사용되는 토큰(`hash`)을 생성하는 클래스입니다.
 
 ```typescript
 // packages/core/injector/module-token-factory.ts
@@ -338,7 +338,7 @@ export class ModuleTokenFactory {
 
 ### ModuleCompiler
 
-`NestContainer`에서는 `DynamicModule`의 의존성 관련 정보를 따로 분리하여 관리합니다. `ModuleCompiler`는 이를 위해, `Module`의 정보를 적절히 파싱하는 기능을 수행하는 일종의 유틸리티 클래스에 해당한다고 볼수 있습니다.
+`NestContainer`에서는 `DynamicModule`의 의존성 관련 정보를 따로 분리하여 관리합니다. `ModuleCompiler`는 이를 위해 `Module`의 정보를 적절히 파싱하는 기능을 수행하는 일종의 유틸리티 클래스에 해당한다고 볼 수 있습니다.
 
 ```typescript
 // packages/core/injector/compiler.ts
@@ -356,7 +356,7 @@ export class ModuleCompiler {
 
 ### ModulesContainer
 
-`ModulesContainer`는 모든 `Module` 정보가 저장되는 비교적 단순한 `Map<string, Module>` 타입의 클래스입니다. 키 값으로는  `ModuleTokenFactory`에서 생성된 토큰을 사용하게 됩니다.
+`ModulesContainer`는 모든 `Module` 정보가 저장되는 비교적 단순한 `Map<string, Module>` 타입의 클래스입니다. 키 값으로는 `ModuleTokenFactory`에서 생성된 토큰을 사용하게 됩니다.
 
 ```typescript
 // packages/core/injector/modules-container.ts
@@ -370,7 +370,7 @@ export class ModulesContainer extends Map<string, Module> {
 ```
 
 ## initialize()
-다음으로 `NestFactory`는 간단한 설정을 마친 후, `initialize()` 메서드를 호출합니다. `initalize()` 매서드의 핵심 역할은 크게 `DependenciesScanner`에 의한 모듈 등록 과정과 `InstanceLoader`에 의한 의존성 객체 생성 과정으로 나눌 수 있습니다.
+다음으로 `NestFactory`는 간단한 설정을 마친 후 `initialize()` 메서드를 호출합니다. `initalize()` 메서드의 핵심 역할은 크게 `DependenciesScanner`에 의한 모듈 등록 과정과 `InstanceLoader`에 의한 의존성 객체 생성 과정으로 나눌 수 있습니다.
 
 ```typescript
 // packages/core/nest-factory.ts
@@ -414,7 +414,7 @@ export class NestFactory{
 
 ### DependenciesScanner
 
-`DependenciesScanner`의 가장 중요한 역할은 모듈 트리를 순회하며 `NestContainer`에 모듈들을 등록하는 것입니다. 뿐만 아니라, `DependenciesScanner`는  모듈간의 연결관계(`edge`)와 관련된 정보를 등록하고, 모듈에서 관리하는 의존성(ex, `providers`) 등의 메타정보를 관리하고, 이후 `NestApplication`에서 모듈을 순회하는(ex, `Module Lifecycle Hooks`) 과정에서 필요한 위상정렬을 위해, 모듈의 깊이를 계산하는 등의 다양한 기능을 추가적으로 수행합니다.
+`DependenciesScanner`의 가장 중요한 역할은 모듈 트리를 순회하며 `NestContainer`에 모듈들을 등록하는 것입니다. 그뿐만 아니라 `DependenciesScanner`는 모듈 간의 연결 관계(`edge`)와 관련된 정보를 등록하고, 모듈에서 관리하는 의존성(예: `providers`) 등의 메타 정보를 관리하며, 이후 `NestApplication`에서 모듈을 순회할 때(예: `Module Lifecycle Hooks`) 필요한 위상 정렬을 위해 모듈의 깊이를 계산하는 등 다양한 기능을 추가로 수행합니다.
 
 ```typescript
 // packages/core/scanner.ts
@@ -432,7 +432,7 @@ export class DependenciesScanner {
 ```
 
 ### InstanceLoader
-`InstanceLoader`는 `NestContainer`에 등록된 모듈의 `Provider`, `Injectable`, `Controller`의 프로토타입 객체와 인스턴스를 순서대로 생성하는 역할을 합니다. 프로토타입을 생성하는 내부 과정은 단순하지만, 복잡한 의존성 주입 관계를 갖고 있는 인스턴스를 생성하는 과정은 비교적 쉽지 않습니다. 해당 기능은 `Injector`라 불리는 내부 클래스에 의해 실행됩니다. `Injector`는 의존성 객체의 위계를 파악하고 콜백을 활용하여 순서를 조율하고, 이를 적절히 주입하여 모든 의존성 객체들의 인스턴스를 생성하는 등, `DI`에서 핵심적인 역할을 수행합니다. 이번 포스팅에서는 다루기에는 내용이 많은 관계로 `Injector`는 추후 다른 포스팅에서 자세히 알아보도록 하겠습니다.
+`InstanceLoader`는 `NestContainer`에 등록된 모듈의 `Provider`, `Injectable`, `Controller`의 프로토타입 객체와 인스턴스를 순서대로 생성하는 역할을 합니다. 프로토타입을 생성하는 내부 과정은 단순하지만, 복잡한 의존성 주입 관계를 갖고 있는 인스턴스를 생성하는 과정은 비교적 쉽지 않습니다. 해당 기능은 `Injector`라 불리는 내부 클래스가 실행합니다. `Injector`는 의존성 객체의 위계를 파악하고 콜백을 활용하여 순서를 조율하며, 이를 적절히 주입하여 모든 의존성 객체의 인스턴스를 생성하는 등 `DI`에서 핵심적인 역할을 수행합니다. 이번 포스팅에서 다루기에는 내용이 많으므로 `Injector`는 추후 다른 포스팅에서 자세히 알아보도록 하겠습니다.
 
 ```typescript
 // packages/core/injector/instance-loader.ts
@@ -450,7 +450,7 @@ export class InstanceLoader {
 ```
 
 ## NestApplication
-드디어 마지막 과정입니다. `NestFactory`는 모듈과 의존성 객체 등록 과정을 모두 마친 후, `NestApplication` 인스턴스를 생성합니다. 이후, 에러 핸들링, 메서드 체이닝, fallback 등 일부 기능을 위해 `Proxy` 객체로 감싸는 것을 끝으로, `NestFactory`의 역할이 끝나게 됩니다.
+드디어 마지막 과정입니다. `NestFactory`는 모듈과 의존성 객체 등록 과정을 모두 마친 후 `NestApplication` 인스턴스를 생성합니다. 이후 에러 핸들링, 메서드 체이닝, fallback 등 일부 기능을 위해 `Proxy` 객체로 감싸는 과정을 끝으로 `NestFactory`의 역할이 마무리됩니다.
 
 ```typescript
 // packages/core/nest-factory.ts

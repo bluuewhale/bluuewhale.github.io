@@ -4,18 +4,18 @@ date = '2022-11-28T11:47:49+09:00'
 draft = false
 translationKey = 'nestjs-internals-03-instanceloader-and-injector'
 slug = 'nestjs-internals-03-instanceloader-and-injector'
-description = 'InstanceWrapper와 Injector가 프로토타입 생성, resolveConstructorParams()를 거쳐 의존성 객체의 인스턴스를 생성하고 주입하는 과정을 다룹니다.'
+description = 'InstanceWrapper와 Injector가 프로토타입을 생성하는 단계, 그리고 resolveConstructorParams()를 거쳐 의존성 객체의 인스턴스를 생성하고 주입하는 단계를 다룹니다.'
 tags = ['NestJS', 'TypeScript', 'DI', 'Node.js']
 categories = ['NestJS']
 +++
 
 ## Intro
-안녕하세요. 이전 포스팅에서는 NestJS에서 모듈과 의존성 객체의 메타데이터가 어떤 과정을 거쳐 등록되는지 살펴보았습니다. 이번 포스팅에서는 모듈에 등록된 의존성 객체의 인스턴스의 라이프사이클(`생성`, `주입`, `제거`)을 관리하는 `InstanceLoader`와 `Injector`에 대해 알아보도록 하겠습니다.
+안녕하세요. 이전 포스팅에서는 NestJS에서 모듈과 의존성 객체의 메타데이터가 어떤 과정을 거쳐 등록되는지 살펴보았습니다. 이번 포스팅에서는 모듈에 등록된 의존성 객체 인스턴스의 라이프사이클(`생성`, `주입`, `제거`)을 관리하는 `InstanceLoader`와 `Injector`에 대해 알아보도록 하겠습니다.
 
 ## Dependency Injection in NestJS
-`Dependency Injection`(이하 의존성 주입)은 인스턴스들의 의존 관계를 선언적으로 표현하고, 의존 관계를 파싱 및 인스턴스 생성은 일반적으로 프레임워크에서 관리하는 IoC 컨테이너에 위임하는 프로그래밍 방법론입니다. 의존성 주입과 관련된 자세한 내용은 이번 포스팅의 범위를 벗어나므로 생략하도록 하겠습니다.
+`Dependency Injection`(이하 의존성 주입)은 인스턴스들의 의존 관계를 선언적으로 표현하고, 의존 관계의 파싱과 인스턴스 생성은 일반적으로 프레임워크에서 관리하는 IoC 컨테이너에 위임하는 프로그래밍 방법론입니다. 의존성 주입과 관련된 자세한 내용은 이번 포스팅의 범위를 벗어나므로 생략하도록 하겠습니다.
 
-의존성 주입을 구현할 때에는 객체들의 의존 관계를 정확히 파싱하고 이를 순서대로 조율해주는 과정이 매우 중요합니다. NestJS에서는 크게 생성자 기반(`constructor-based`) 방식과 프로퍼티 기반(`property-based`) 방식이 있습니다. 아래의 예시에서는 `CatController`는 `CatService`에 의존성을 가지고 있습니다. 따라서, `CatController`의 인스턴스를 생성하기 위해서는 먼저 `CatService`의 인스턴스를 생성하고 이를 `CatController`의 인스턴스 생성 시 주입해주어야 합니다. NestJS에서는 `InstanceLoader`와 `Injector`가 이러한 과정을 실질적으로 지휘하며 조율하는 역할을 한다고 볼 수 있습니다.
+의존성 주입을 구현할 때에는 객체들의 의존 관계를 정확히 파싱하고 이를 순서대로 조율해주는 과정이 매우 중요합니다. NestJS에서는 크게 생성자 기반(`constructor-based`) 방식과 프로퍼티 기반(`property-based`) 방식이 있습니다. 아래 예시에서 `CatController`는 `CatService`에 의존성을 가지고 있습니다. 따라서 `CatController`의 인스턴스를 생성하려면 먼저 `CatService`의 인스턴스를 생성해야 하고, 이 인스턴스를 `CatController`를 생성할 때 주입해주어야 합니다. NestJS에서는 `InstanceLoader`와 `Injector`가 이 과정을 실질적으로 주도하고 조율하는 역할을 한다고 볼 수 있습니다.
 
 ```typescript
 @Controller
@@ -122,7 +122,7 @@ export class InstanceLoader {
 ```
 
 ## InstanceWrapper
-`Injector`에 대해 살펴보기에 앞서, 먼저 `InstanceWrapper`에 대해 짧게 알고 넘어가도록 하겠습니다.  `InstanceWrapper`는 하나의 의존성 객체가 의존성 주입 과정에서 필요한 다양한 메타데이터를 가지고 있으며, `Context`, `Scope`에 따라 인스턴스의 라이프사이클을 관리하는 역할을 합니다. NestJS는 내부적으로 의존성 객체의 인스턴스들을 `InstanceWrapper`라는 클래스로 감싸서 관리합니다.
+`Injector`에 대해 살펴보기에 앞서, 먼저 `InstanceWrapper`에 대해 짧게 알고 넘어가도록 하겠습니다. `InstanceWrapper`는 하나의 의존성 객체가 의존성 주입 과정에서 필요한 다양한 메타데이터를 가지고 있으며, `Context`, `Scope`에 따라 인스턴스의 라이프사이클을 관리하는 역할을 합니다. NestJS는 내부적으로 의존성 객체의 인스턴스들을 `InstanceWrapper`라는 클래스로 감싸서 관리합니다.
 
 ```typescript
 // packages/core/injector/instance-wrapper.ts
@@ -302,10 +302,10 @@ export class Module {
 ```
 
 ## Injector
-다시 `Injector`로 돌아와보도록 하겠습니다. 이번 포스팅에서는 `InstanceLoader`에 의해 호출되는 `Injector`의 주요 매서드인 `loadPrototype`과 `loadProvider`를 중점적으로 다뤄보도록 하겠습니다
+다시 `Injector`로 돌아와보도록 하겠습니다. 이번 포스팅에서는 `InstanceLoader`가 호출하는 `Injector`의 주요 메서드인 `loadPrototype`과 `loadProvider`를 중점적으로 다뤄보도록 하겠습니다.
 
 #### Injector.loadPrototype()
-먼저, `Injector.loadPrototype()` 매서드를 살펴보면, `Object.create()` 매서드를 호출하는 방식으로 빈 객체를 생성합니다. 실제로는 인스턴스를 생성한 것이지만, 이러한 방식으로 생성된 객체는 생성자 매서드를 호출하지 않기 때문에 다른 객체에 의존성을 갖고 있는 객체들을 생성하는 것이 가능합니다. 생성된 인스턴스는 의존성을 갖고 있는 객체를 주입받지 못 하였기 때문에, 아직은 대부분의 프로퍼티가 `undefined`인 상태입니다. 코드 구현을 살펴보면, 구체적으로는 `DependenciesScanner`가 생성한 `InstanceWrapper`에 `instance` 프로퍼티를 업데이트하는 방식으로 의존성 객체의 인스턴스를 등록합니다.
+먼저 `Injector.loadPrototype()` 메서드를 살펴보면, `Object.create()` 메서드를 호출하는 방식으로 빈 객체를 생성합니다. 실제로는 인스턴스를 생성하는 것이지만, 이렇게 생성된 객체는 생성자 메서드를 호출하지 않으므로 다른 객체에 의존하는 객체도 생성할 수 있습니다. 생성된 인스턴스는 자신이 의존하는 객체를 아직 주입받지 못했기 때문에, 대부분의 프로퍼티가 `undefined`인 상태입니다. 코드 구현을 살펴보면, 구체적으로는 `DependenciesScanner`가 생성한 `InstanceWrapper`에 `instance` 프로퍼티를 업데이트하는 방식으로 의존성 객체의 인스턴스를 등록합니다.
 
 ```typescript
 // packages/core/injector/injector.ts
@@ -347,7 +347,7 @@ export class InstanceWrapper<T = any> {
 ```
 
 #### Injector.loadInstance()
-다음으로, `InstanceLoader`는 `Injector.loadInstance()` 매서드를 호출합니다. 여러 모듈에 등록된 의존성 객체 인스턴스 생성 과정에서 발생할 수 있는 충돌을 방지하기 위해 `Injector`는 `InstancePerContext` 객체의 프로퍼티(`isPending`, `isResolved`, `donePromise`)를 조작하여 인스턴스 생성 과정을 조율합니다.
+다음으로, `InstanceLoader`는 `Injector.loadInstance()` 메서드를 호출합니다. 여러 모듈에 등록된 의존성 객체 인스턴스 생성 과정에서 발생할 수 있는 충돌을 방지하기 위해 `Injector`는 `InstancePerContext` 객체의 프로퍼티(`isPending`, `isResolved`, `donePromise`)를 조작하여 인스턴스 생성 과정을 조율합니다.
 
 ```typescript
 // packages/core/injector/injector.ts
@@ -398,7 +398,7 @@ export class Injector {
 }
 ```
 
-이후, 본격적으로 의존성 주입을 통해 인스턴스 생성하는 절차가 진행됩니다. `@Inject`, `@Optional` 등의 데코레이터를 통해 등록된 메타데이터는 이 과정에서 활용됩니다.
+이후 본격적으로 의존성 주입을 통해 인스턴스를 생성하는 절차가 진행됩니다. `@Inject`, `@Optional` 등의 데코레이터를 통해 등록된 메타데이터는 이 과정에서 활용됩니다.
 
 1. `resolveConstructorParams()`를 호출하여 생성자에 등록된 의존성 정보들을 파싱한 후, 해당되는 객체들을 불러옵니다.
 

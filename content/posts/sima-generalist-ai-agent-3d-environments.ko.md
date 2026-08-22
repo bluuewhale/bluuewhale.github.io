@@ -35,7 +35,7 @@ SIMA는 전문가의 행동 데이터를 모아 그 행동을 그대로 따라 �
 
 모델 자체는 텍스트·이미지·비디오를 함께 처리할 수 있는 cross-attended transformer를 새로 학습시킨 것으로, 긴 시퀀스를 다루기 위해 장기 메모리를 가진 Transformer-XL 구조를 사용합니다. 이 모델은 다음에 취해야 할 8개의 액션(키보드/마우스 조작) 묶음을 출력합니다.
 
-학습 과정에서는 모델이 예측한 액션과 실제 전문가가 취한 액션의 차이를 cross-entropy loss로 계산해 최소화합니다. 여기에 더해, 자연어 명령에 더 높은 가중치를 주기 위해 이미지 생성 모델에서 흔히 쓰이는 Classifier-Free Guidance(CFG) 기법을 가져다 씁니다.
+학습 과정에서는 모델이 예측한 액션과 실제 전문가가 취한 액션의 차이를 cross-entropy loss로 계산해 최소화합니다. 여기에 더해, 자연어 명령에 더 높은 가중치를 주기 위해 이미지 생성 모델에서 흔히 쓰이는 Classifier-Free Guidance(CFG) 기법을 차용합니다.
 
 ```
 𝜋_CFG = 𝜋(image, language) + 𝜆 · (𝜋(image, language) − 𝜋(image))

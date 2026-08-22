@@ -50,7 +50,7 @@ $$
 
 ![](/images/community-detection/image3.png)
 
-## Resolution: "무작위"의 기준을 조절하는 손잡이
+## Resolution: "무작위"의 기준을 조절하는 파라미터
 
 여기에 한 가지 파라미터를 더 끼워 넣을 수 있습니다. 바로 Resolution, $\gamma$입니다.
 

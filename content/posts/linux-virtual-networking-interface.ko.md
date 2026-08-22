@@ -16,14 +16,14 @@ hiddenInSingle = true
 > 이 글은 아래의 원문을 읽고 내용의 일부를 한글로 정리한 글입니다.
 > https://developers.redhat.com/blog/2018/10/22/introduction-to-linux-interfaces-for-virtual-networking/
 
- 리눅스는 컨테이너 기술의 기반이 되는 virtual networking 관련 기능들을 다수 제공한다. 이 글에서는 리눅스 virtual networking에 자주 사용되는 대표적인 네트워크 인터페이스를 살펴보도록 하였다.
+리눅스는 컨테이너 기술의 기반이 되는 가상 네트워킹(virtual networking) 관련 기능을 다양하게 제공한다. 이 글에서는 리눅스 가상 네트워킹에서 자주 사용되는 대표적인 네트워크 인터페이스를 살펴본다.
 
 ## Bridge
-`Linux Bridge`는 일반적인 네트워크 스위치와 유사하게 동작한다. `Bridge`는 주로 라우터, 게이트웨이, VM 등에서 패킷을 목적지로 전달(forwarding)하는 역할을 수행한다. `Bridge`는 `STP`, `VLAN filter`, `multicast snooping`등의 기능도 추가적으로 지원한다.
+`Linux Bridge`는 일반적인 네트워크 스위치와 유사하게 동작한다. `Bridge`는 주로 라우터, 게이트웨이, VM 등에서 패킷을 목적지로 전달(forwarding)하는 역할을 수행한다. `Bridge`는 `STP`, `VLAN filter`, `multicast snooping` 등의 기능도 추가로 지원한다.
 
 ![](/images/linux-virtual-networking-interface/image1.png)
 
- 아래의 소스코드는 리눅스에서 Bridge를 생성하고, 서로 다른 네트워크 인터페이스와 연결하는 과정을 코드로 작성한 예시이다. 이 과정을 거치면, 브릿지를 통해 `VM 1`, `VM 2`과 `network naemspace 1`은 서로 통신이 가능해진다.
+아래 소스 코드는 리눅스에서 Bridge를 생성하고 서로 다른 네트워크 인터페이스와 연결하는 과정을 보여주는 예시이다. 이 과정을 거치면 브릿지를 통해 `VM 1`, `VM 2`와 `network naemspace 1`은 서로 통신할 수 있게 된다.
 
 ```bash
 $ ip link add br0 type bridge # bridge 생성
@@ -42,7 +42,7 @@ Hot-standby 모드는 네트워크 인터페이스를 `Active`와 `Standby`로 �
 
 ![](/images/linux-virtual-networking-interface/image2.png)
 
-아래의 소스코드는 두 네트워크 인터페이스(`eth0`, `eth1`)을 `hot-standy` 모드로 묶는 예시이다.
+아래 소스 코드는 두 네트워크 인터페이스(`eth0`, `eth1`)를 `hot-standy` 모드로 묶는 예시이다.
 ```bash
 $ ip link add bond0 type bond miimon 100 mode active-backup # bond0 인터페이스 추가, 모니터링 주기 100ms, active-backup 모드
 $ ip link set eth0 master bond0 # eth0을 bond0 인터페이스에 추가
@@ -50,11 +50,11 @@ $ ip link set eth1 master bond0 # eth1을 bond0 인터페이스에 추가
 ```
 
 ## Team Device
-`Team Device`는 bonded interface와 유사하지만, `L2` 레벨에서 여러 개의 NIC를 하나의 논리적 그룹으로 묶는 기능을 수행한다. Team device와 bonded interface의 차이와 관련된 자세한 내용은 [이 글](https://github.com/jpirko/libteam/wiki/Bonding-vs.-Team-features)에서 확인하실 수 있습니다.
+`Team Device`는 bonded interface와 유사하지만, `L2` 레벨에서 여러 개의 NIC를 하나의 논리적 그룹으로 묶는 기능을 수행한다. Team Device와 bonded interface의 차이에 관한 자세한 내용은 [이 글](https://github.com/jpirko/libteam/wiki/Bonding-vs.-Team-features)에서 확인할 수 있다.
 
 ![](/images/linux-virtual-networking-interface/image3.png)
 
-아래의 소스코드는 팀 디바이스를 생성하고 2개의 네트워크 인터페이스(`eth0`, `eth1`)를 묶는 과정을 수행하는 예시이다.
+아래 소스 코드는 팀 디바이스를 생성하고 2개의 네트워크 인터페이스(`eth0`, `eth1`)를 묶는 과정을 수행하는 예시이다.
 
 ```bash
 $ teamd -o -n -U -d -t team0 -c '{"runner": {"name": "activebackup"},"link_watch": {"name": "ethtool"}}'
@@ -65,7 +65,7 @@ $ teamdctl team0 port add eth1
 ```
 
 ## VLAN
-`VLAN`은 virtual LAN의 줄임말로 하나의 스위치에서 브로드캐스트 도메인을 논리적으로 분할하기 위해 활용된다. 브로드캐스트에서는 일반적으로 동일한 LAN에 포함된 모든 네트워크 단말로 패킷을 송출한다. VLAN은 하나의 스위치에서 태그를 붙이는 방식으로 LAN을 논리적으로 분할하여 브로트캐스트 과정에서 발생하는 불필요한 대역폭 낭비 등을 개선한다.
+`VLAN`은 virtual LAN의 줄임말로 하나의 스위치에서 브로드캐스트 도메인을 논리적으로 분할하기 위해 활용된다. 브로드캐스트에서는 일반적으로 동일한 LAN에 포함된 모든 네트워크 단말로 패킷을 송출한다. VLAN은 하나의 스위치 안에서 태그를 붙이는 방식으로 LAN을 논리적으로 분할하여, 브로드캐스트 과정에서 발생하는 불필요한 대역폭 낭비 문제를 개선한다.
 
 VLAN을 위한 프로토콜은 `IEEE 802.1Q`에서 정의하고 있다. IEEE 802.1Q는 일반적으로 `VLAN tagging`이라고도 불린다. VLAN 헤더에는 `VLAN ID` 필드가 존재한다. VLAN ID는 VLAN을 구분하기 위해 활용되며 12bit로 4,096개의 값을 가질 수 있다.
 
@@ -73,18 +73,18 @@ VLAN을 위한 프로토콜은 `IEEE 802.1Q`에서 정의하고 있다. IEEE 802
 
 ![](/images/linux-virtual-networking-interface/image5.png)
 
-아래의 소스코드는 메인 네트워크 인터페이스(`eth0`)를 2개의 VLAN(`eth0.2`, `eth0.3`)으로 분리하는 예시이다.
+아래 소스 코드는 메인 네트워크 인터페이스(`eth0`)를 2개의 VLAN(`eth0.2`, `eth0.3`)으로 분리하는 예시이다.
 ```bash
 ip link add link eth0 name eth0.2 type vlan id 2
 ip link add link eth0 name eth0.3 type vlan id 3
 ```
 
 ## VETH
-`VETH`는 virtual Ethernet의 줄임말로, 로컬 이더넷 터널에 해당한다. VETH는 한 쌍으로 생성되며, 한 쪽에서 다른 쪽으로 패킷을 전송할 수 있으며, 한 쪽에 다운된 경우 나머지 한 쪽도 정상적으로 기능하지 않는 것이 특징이다.
+`VETH`는 virtual Ethernet의 줄임말로, 로컬 이더넷 터널에 해당한다. VETH는 한 쌍으로 생성되며, 한쪽에서 다른 쪽으로 패킷을 전송할 수 있다. 한쪽이 다운되면 나머지 한쪽도 정상적으로 동작하지 않는 것이 특징이다.
 
 ![](/images/linux-virtual-networking-interface/image6.png)
 
-아래의 코드는 호스트 머신에서 두 개의 네트워크 네임스페이스(`netns1`, `netns2`)를 생성하고, VETH를 활용하여 호스트 네트워크와 새롭게 생성된 네트워크 네임스페이스를 연결하는 과정을 구현한 것이다.
+아래 코드는 호스트 머신에서 두 개의 네트워크 네임스페이스(`netns1`, `netns2`)를 생성하고, VETH를 활용하여 호스트 네트워크와 새롭게 생성된 네트워크 네임스페이스를 연결하는 과정을 구현한 것이다.
 ```bash
 $ ip netns add netns1
 $ ip netns add netns2

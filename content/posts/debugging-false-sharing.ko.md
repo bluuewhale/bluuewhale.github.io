@@ -13,7 +13,7 @@ image = 'images/debugging-false-sharing/image4.png'
 hiddenInSingle = true
 +++
 
-> 이 글은 넷플릭스 테크 블로그의 [Seeing through hardware counters: a journey to threefold performance increase](https://netflixtechblog.com/seeing-through-hardware-counters-a-journey-to-threefold-performance-increase-2721924a2822)를 제가 이해한 대로 요약하고, 관련 배경 지식을 나름대로 정리해 덧붙인 글입니다. 원문이 정확한 소스이니, 세부 수치나 디테일이 궁금하시다면 반드시 원문을 확인해주세요.
+> 이 글은 넷플릭스 테크 블로그의 [Seeing through hardware counters: a journey to threefold performance increase](https://netflixtechblog.com/seeing-through-hardware-counters-a-journey-to-threefold-performance-increase-2721924a2822)를 제가 이해한 대로 요약하고, 관련 배경 지식을 나름대로 정리해 덧붙인 글입니다. 원문이 정확한 출처이니, 구체적인 수치나 세부 사항이 궁금하시다면 반드시 원문을 확인해주세요.
 
 ## 문제 발생
 
@@ -29,7 +29,7 @@ hiddenInSingle = true
 
 처음에는 JVM profiling, JFR(Java Flight Recorder), JIT 컴파일러 분석 같은 익숙한 도구들을 동원했지만 별다른 소득이 없었습니다. 결국 한 단계 더 아래로 내려가 CPU metric과 PMC(Performance Monitoring Counter)를 들여다보고서야 실마리를 찾았습니다.
 
-느린 노드는 빠른 노드보다 CPI(Cycle per Instruction)가 3배 가까이 높았습니다. CPI가 이렇게 튄다는 건 CPU stall이 빈번하게 일어난다는 신호입니다. L1, L3 캐시의 부하도 훨씬 컸는데, 이는 캐시 일관성으로 인한 cache miss가 많다는 뜻입니다. MACHINE_CLEAR 카운터 역시 자주 발생했습니다.
+느린 노드는 빠른 노드보다 CPI(Cycle per Instruction)가 3배 가까이 높았습니다. CPI가 이렇게 튄다는 것은 CPU stall이 빈번하게 일어난다는 신호입니다. L1, L3 캐시의 부하도 훨씬 컸는데, 이는 캐시 일관성으로 인한 cache miss가 많다는 뜻입니다. MACHINE_CLEAR 카운터 역시 자주 발생했습니다.
 
 ![](/images/debugging-false-sharing/image3.png)
 
@@ -59,7 +59,7 @@ for (int i = 0; i < 1000; ++i) {
 
 두 스레드는 어떤 변수도 공유하지 않습니다. 그런데도 CPU는 캐시 라인의 일부만 바뀌어도 캐시 일관성 프로토콜에 따라 그 캐시 라인 전체를 무효화합니다. 대표적인 프로토콜인 MESI는 캐시 라인의 상태를 Modified(이 코어가 수정한 최신 값), Exclusive(이 코어만 보유, 아직 미수정), Shared(여러 코어가 읽기 전용 공유), Invalid(내 캐시에 없음) 네 가지로 나눕니다. 어딘가에 쓰려면 M이나 E 상태를 가져야 하고, 한 코어가 소유권을 요청(RFO)하면 인터커넥트가 이를 중개해 다른 코어들의 캐시를 무효화 상태로 바꿉니다.
 
-그러니 스레드1이 x를 바꾸면, 스레드2는 L1에 있던 캐시 라인을 지우고 L3에서 다시 읽어와야 합니다. 이게 바로 false sharing입니다.
+그러니 스레드1이 x를 바꾸면, 스레드2는 L1에 있던 캐시 라인을 지우고 L3에서 다시 읽어와야 합니다. 이것이 바로 false sharing입니다.
 
 ![](/images/debugging-false-sharing/image4.png)
 
@@ -67,7 +67,7 @@ False sharing이 벌어지면 캐시 무효화 탓에 CPU stall이 늘어 CPI가
 
 ## 원인 규명과 해결
 
-실제로 문제를 일으킨 코드를 찾기 위해 CPU instruction profiling을 돌렸고, CPI가 100을 넘는 instruction을 발견했습니다. 범인은 JVM 내부에서 서브타입 체크를 빠르게 하려고 쓰는 두 변수, `secondary_supers_addr`와 `secondary_super_cache`였습니다. 이 최적화 기법 자체는 [Fast Subtype Checking in the HotSpot JVM](https://www.researchgate.net/publication/221552851_Fast_subtype_checking_in_the_HotSpot_JVM) 논문에 자세히 나와 있습니다.
+실제로 문제를 일으킨 코드를 찾기 위해 CPU instruction profiling을 돌렸고, CPI가 100을 넘는 instruction을 발견했습니다. 원인은 JVM 내부에서 서브타입 체크를 빠르게 하려고 쓰는 두 변수, `secondary_supers_addr`와 `secondary_super_cache`였습니다. 이 최적화 기법 자체는 [Fast Subtype Checking in the HotSpot JVM](https://www.researchgate.net/publication/221552851_Fast_subtype_checking_in_the_HotSpot_JVM) 논문에 자세히 나와 있습니다.
 
 ![](/images/debugging-false-sharing/image5.png)
 
@@ -96,9 +96,9 @@ struct {
 
 ## 남아있던 True Sharing
 
-그런데 false sharing 병목이 풀리자, 이번엔 true sharing 문제가 수면 위로 떠올랐습니다. False sharing이 서로 무관한 변수가 같은 캐시 라인에 우연히 겹쳐서 생기는 문제라면, true sharing은 실제로 서로 관련 있는 변수를 여러 코어가 동시에 빈번하게 읽고 쓰면서 생기는 문제입니다. 즉, 자주 접근되는 공유 변수가 실제로 존재한다는 뜻입니다.
+그런데 false sharing 병목이 풀리자, 이번에는 true sharing 문제가 새롭게 드러났습니다. False sharing이 서로 무관한 변수가 같은 캐시 라인에 우연히 겹쳐서 생기는 문제라면, true sharing은 실제로 서로 관련 있는 변수를 여러 코어가 동시에 빈번하게 읽고 쓰면서 생기는 문제입니다. 즉, 자주 접근되는 공유 변수가 실제로 존재한다는 뜻입니다.
 
-이번 범인은 `super_cache_addr`라는 변수였습니다. 넷플릭스 팀은 이 값을 아예 캐싱하지 않도록 설정을 바꾸는 방식으로 true sharing을 해소했습니다.
+이번 원인은 `super_cache_addr`라는 변수였습니다. 넷플릭스 팀은 이 값을 아예 캐싱하지 않도록 설정을 바꾸는 방식으로 true sharing을 해소했습니다.
 
 ![](/images/debugging-false-sharing/image8.png)
 
@@ -110,7 +110,7 @@ struct {
 
 ## 왜 일부 노드에서만 발생했을까
 
-일반적인 캐시 라인 크기는 64바이트고, 문제가 된 두 변수 `_secondary_super_cache`와 `_secondary_supers`는 각각 8바이트입니다. 메모리 레이아웃이 사실상 무작위로 결정된다고 보면, 인접한 두 8바이트 데이터가 같은 64바이트 캐시 라인에 들어갈 확률은 87.5%입니다. 운 좋게 두 변수가 서로 다른 캐시 라인에 떨어진 12.5%의 노드는 멀쩡했고, 나머지 87.5%의 노드에서만 성능 저하가 나타난 겁니다.
+일반적인 캐시 라인 크기는 64바이트이고, 문제가 된 두 변수 `_secondary_super_cache`와 `_secondary_supers`는 각각 8바이트입니다. 메모리 레이아웃이 사실상 무작위로 결정된다고 보면, 인접한 두 8바이트 데이터가 같은 64바이트 캐시 라인에 들어갈 확률은 87.5%입니다. 운 좋게 두 변수가 서로 다른 캐시 라인에 떨어진 12.5%의 노드는 멀쩡했고, 나머지 87.5%의 노드에서만 성능 저하가 나타난 것입니다.
 
 ## 읽으면서 든 의문들
 
@@ -118,7 +118,7 @@ struct {
 
 첫 번째는 MACHINE_CLEAR 빈도가 왜 함께 증가했는가입니다. False sharing으로 L1 캐시 무효화와 CPU stall이 늘어나는 것까지는 직관적으로 이해가 되는데, false sharing이 MACHINE_CLEAR를 유발하는 hazard의 직접적인 원인이라는 연결 고리는 원문만으로는 다소 불명확했습니다.
 
-두 번째는 CPU를 업그레이드하기 전에는 왜 같은 문제가 드러나지 않았는가입니다. 물리 코어 수가 늘어나면 false sharing이 심해지는 것 자체는 자연스럽지만, 그렇다면 업그레이드 이전에도 같은 문제가 정도만 약하게 존재했어야 하는 게 아닌가 하는 의문이 남습니다.
+두 번째는 CPU를 업그레이드하기 전에는 왜 같은 문제가 드러나지 않았는가입니다. 물리 코어 수가 늘어나면 false sharing이 심해지는 것 자체는 자연스럽지만, 그렇다면 업그레이드 이전에도 같은 문제가 정도만 약하게 존재했어야 하는 것이 아닌가 하는 의문이 남습니다.
 
 ## References
 - [Seeing through hardware counters: a journey to threefold performance increase (Netflix Tech Blog)](https://netflixtechblog.com/seeing-through-hardware-counters-a-journey-to-threefold-performance-increase-2721924a2822)

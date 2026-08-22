@@ -3,21 +3,21 @@ title = 'JVM Lock Coarsening'
 date = '2025-09-16T16:12:56+09:00'
 draft = false
 slug = 'jvm-lock-coarsening'
-description = '같은 모니터에 대해 반복적으로 발생하는 락 획득/해제를 하나의 큰 단위로 합쳐 오버헤드를 줄이는 JIT 최적화 기법, Lock Coarsening을 벤치마크와 함께 살펴봅니다.'
+description = '같은 모니터에 대해 반복적으로 발생하는 락 획득과 해제를 하나의 큰 단위로 합쳐서 오버헤드를 줄이는 JIT 최적화 기법인 Lock Coarsening을 벤치마크와 함께 살펴봅니다.'
 tags = ['JVM', 'JIT', 'Lock Coarsening', 'Java', 'Performance']
 categories = ['JVM', 'Performance']
 +++
 
 ## Lock Coarsening이란?
 
-- 같은 모니터(객체)에 대해 락을 연속적으로 잡았다 풀었다 하는 동작을, 더 큰 단위로 한번에 잡고 푸는 형태로 합쳐서 락 획득/릴리즈에 따른 오버헤드를 최소화하는 JIT 최적화 기법입니다.
+- 같은 모니터(객체)에 대해 락을 연속적으로 잡았다 풀었다 하는 동작을 더 큰 단위로 묶어서 한 번에 잡고 푸는 형태로 바꿈으로써, 락을 획득하고 해제하는 데 따르는 오버헤드를 최소화하는 JIT 최적화 기법입니다.
 - `-XX:+EliminateLocks`  옵션이 활성화되어 있으면 적용됩니다.
 
 ## 핵심 아이디어
 
-- 자바의 `synchroinzed` 는 바이트코드로 `monitorenter/moniterexit` 으로 표현됩니다.
-- 반복문/인접 영역에 같은 객체애 대해 `monitorenter/moniterexit` 가 짧게 반복되면, JIT 컴파일러는 이를 한번만 처리하도록 변경합니다.
-- 이를 통해, CAS(Compare-and-Set), 메모리 배리어, 스택/헤더 변경 과 같은 락 비용을 최소화합니다.
+- 자바의 `synchroinzed`는 바이트코드로 `monitorenter/moniterexit`으로 표현됩니다.
+- 반복문이나 인접한 코드 영역에서 같은 객체에 대해 `monitorenter/moniterexit`가 짧은 간격으로 반복되면, JIT 컴파일러는 이를 한 번만 처리하도록 변경합니다.
+- 이를 통해 CAS(Compare-and-Set) 연산, 메모리 배리어, 스택 및 헤더 변경과 같은 락 비용을 최소화합니다.
 
 ## 예시
 
@@ -43,7 +43,7 @@ synchronized (lock) {
 
 ## 검증
 
-- 아래와 같이 테스트 코드 세팅
+- 아래와 같이 테스트 코드를 설정했습니다.
 
 ```java
 @Fork(..., jvmArgsPrepend = {"-XX:-UseBiasedLocking"})
@@ -63,10 +63,10 @@ public class LockRoach {
 }
 ```
 
-- `-prof perfasm` 를 사용하여 디스어셈블리 분석
-    - 분석 결과, Loop Unrolling을 적용하여 락 획득/릴리즈 빈도가 감소한 것을 확인
-    - 다만, loop 전체에 대한 lock coarsening이 일어나지는 않음
-        - JVM은 과도한 코어스닝이 한 스레드가 오래 락을 독점하게 만들 수 있어 위험하다고 판단
+- `-prof perfasm`를 사용하여 디스어셈블리를 분석했습니다.
+    - 분석 결과, JIT 컴파일러가 Loop Unrolling을 적용하여 락 획득과 해제 빈도가 감소한 것을 확인했습니다.
+    - 다만, 루프 전체에 대해 lock coarsening이 적용되지는 않았습니다.
+        - JVM은 과도한 코어스닝이 한 스레드가 락을 오래 독점하게 만들 수 있어 위험하다고 판단했습니다.
 
 ```
  ↗  0x00007f455cc708c1: lea    0x20(%rsp),%rbx
@@ -86,8 +86,8 @@ public class LockRoach {
 ```
 
     - Loop Unrolling이란?
-        - 루프 본문을 복제하여 반복 횟수/분기 비용을 줄이는 컴파일러의 루프 최적화 기법
-        - Loop Unrolling이 적용된 코드 예시
+        - 루프 본문을 복제하여 반복 횟수와 분기 비용을 줄이는 컴파일러의 루프 최적화 기법입니다.
+        - Loop Unrolling이 적용된 코드의 예시는 다음과 같습니다.
 
 ```java
 @Fork(..., jvmArgsPrepend = {"-XX:-UseBiasedLocking"})
@@ -111,8 +111,8 @@ public class LockRoach {
 }
 ```
 
-- Loop Unrolling을 통해, 락 획득/릴리즈 빈도를 1/4 수준으로 줄일 수 있었음
-    - Loop Unrolling 기능을 제한하면 성능이 4배 저하되는 것을 확인
+- Loop Unrolling을 통해 락 획득과 해제 빈도를 1/4 수준으로 줄일 수 있었습니다.
+    - Loop Unrolling 기능을 제한하면 성능이 4배 저하되는 것을 확인했습니다.
 
 ```
 Benchmark            Mode  Cnt      Score    Error  Units
