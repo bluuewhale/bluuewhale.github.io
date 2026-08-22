@@ -2,6 +2,7 @@
 title = 'Kotlin Coroutine Internals: Suspension, Continuation, CPS'
 date = '2023-07-07T00:00:00+09:00'
 draft = false
+translationKey = 'kotlin-coroutine-internals'
 slug = 'kotlin-coroutine-internals'
 description = 'How Kotlin coroutines build suspension points with state machines and CPS.'
 tags = ['Kotlin', 'Coroutines', 'Concurrency', 'CPS', 'State Machine']
