@@ -13,7 +13,7 @@ image = 'images/graphrag/image6.png'
 hiddenInSingle = true
 +++
 
-> 이 글은 마이크로소프트 리서치의 논문 [From Local to Global: A GraphRAG Approach to Query-Focused Summarization](https://arxiv.org/pdf/2404.16130)을 정리한 글입니다.
+> 이 글은 마이크로소프트 리서치의 논문 [From Local to Global: A GraphRAG Approach to Query-Focused Summarization](https://arxiv.org/pdf/2404.16130)과, 서울대학교 산업공학과 DSBA 연구실의 [\[Paper Review\] GraphRAG](https://www.youtube.com/watch?v=mlsZIThxQcQ) 영상을 참고해 정리한 글입니다.
 
 RAG는 신뢰할 수 있는 문서 집합을 구축해두고, 질문이 들어오면 관련 문서를 찾아 LLM에게 근거로 제공해 답을 생성하게 하는 방식입니다. 인덱싱(문서를 chunking해서 검색 가능한 형태로 저장), Retrieval(질문과 관련된 문서를 탐색), Generator(탐색된 문서와 질문을 바탕으로 답변 생성)가 기본 구성 요소입니다.
 
@@ -87,3 +87,4 @@ Podcast(노드 8,564개, 엣지 20,691개)와 News(노드 15,754개, 엣지 19,5
 
 ## References
 - [From Local to Global: A GraphRAG Approach to Query-Focused Summarization](https://arxiv.org/pdf/2404.16130)
+- [\[Paper Review\] GraphRAG (서울대학교 산업공학과 DSBA 연구실)](https://www.youtube.com/watch?v=mlsZIThxQcQ)

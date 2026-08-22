@@ -14,7 +14,7 @@ image = 'images/graphrag/image6.png'
 hiddenInSingle = true
 +++
 
-> This post summarizes the Microsoft Research paper [From Local to Global: A GraphRAG Approach to Query-Focused Summarization](https://arxiv.org/pdf/2404.16130).
+> This post summarizes the Microsoft Research paper [From Local to Global: A GraphRAG Approach to Query-Focused Summarization](https://arxiv.org/pdf/2404.16130), drawing also on the video [\[Paper Review\] GraphRAG](https://www.youtube.com/watch?v=mlsZIThxQcQ) by Seoul National University's DSBA Lab.
 
 RAG works by building a trusted document collection ahead of time, then, when a question comes in, retrieving the relevant documents and handing them to an LLM as grounding for its answer. The basic pieces are indexing (chunking documents into a searchable form), retrieval (finding documents relevant to the question), and generation (producing an answer from the retrieved documents and the question).
 
@@ -88,3 +88,4 @@ Where GraphRAG earns its keep is clear enough: questions that require a global v
 
 ## References
 - [From Local to Global: A GraphRAG Approach to Query-Focused Summarization](https://arxiv.org/pdf/2404.16130)
+- [\[Paper Review\] GraphRAG (Seoul National University DSBA Lab)](https://www.youtube.com/watch?v=mlsZIThxQcQ)
