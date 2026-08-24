@@ -19,15 +19,15 @@ hiddenInSingle = true
 
 ## Part 2: optimizing the hot path (and finding a weird villain)
 
-> *"Why Objects.equals() showed up in the profile—and why SWAR beat the Vector API on ARM (and x86).*
+> *"Why Objects.equals() showed up in the profile, and why SWAR beat the Vector API on ARM (and x86)."*
 
 In the last post, I finally got a SwissTable-ish map running on the JVM and fast enough to make me smile. Naturally, that meant I immediately started staring at the profiler again, thinking: okay… but how do I make it faster?
 
-This follow-up is about that next round of tuning—where the improvements come less from "big design ideas" and more from noticing one weird hotspot at a time, pulling on the thread, and ending up somewhere unexpected.
+This follow-up is about that next round of tuning, where the improvements come less from "big design ideas" and more from noticing one weird hotspot at a time, pulling on the thread, and ending up somewhere unexpected.
 
 The next target: make SwissMap faster.
 
-And the place to start was obvious: the core SIMD-ish probing loop—`findIndex`.
+And the place to start was obvious: the core SIMD-ish probing loop, `findIndex`.
 
 Here's the relevant part:
 ```java
@@ -95,7 +95,7 @@ The profile immediately looked… wrong.
 31.88%  ... java.lang.Integer::equals ...
 ```
 
-Wait—what?
+Wait, what?
 
 This code is supposed to be about SIMD probing. The whole point of the ctrl-byte scan is to avoid expensive key comparisons most of the time. So why is `Integer.equals()` eating such a huge slice of the sampled time?
 
@@ -108,7 +108,7 @@ Digging into the disassembly made it clearer: `Objects.equals()` was not getting
                   ; {virtual_call}
 ```
 
-That `{virtual_call}` is the problem. Even if the callee is tiny, a virtual-call boundary tends to drag in overhead—most visibly, register spills to satisfy the ABI right before the branch:
+That `{virtual_call}` is the problem. Even if the callee is tiny, a virtual-call boundary tends to drag in overhead, most visibly, register spills to satisfy the ABI right before the branch:
 
 ```asm
 str w2,  [sp, #0x48]
@@ -139,15 +139,9 @@ But HotSpot's ability to devirtualize depends on what it knows at that call site
 
 Here's the catch: **HotSpot type profiles attach to bytecode indices (BCIs) inside the callee**, not the caller. So the receiver type profile at `Objects.equals@11` is a blend of every place in the program that ends up calling `Objects.equals()`.
 
-In one call site, a might be an `Integer`
+In one call site, a might be an `Integer`; in another, it might be a `String`, a `Long`, or some random user type.
 
-In another, it might be a `String`
-
-Or a `Long`
-
-Or some random user type
-
-So even if my benchmark is "all Integer, all the time," the profile at `Objects.equals@11` can easily drift into polymorphic (or worse, megamorphic) territory. And once that happens, Hotspot Compiler gets conservative: it keeps the call virtual, and my hot loop pays the price.
+Even if my benchmark is "all Integer, all the time," the profile at `Objects.equals@11` can easily drift into polymorphic (or worse, megamorphic) territory. And once that happens, HotSpot Compiler gets conservative: it keeps the call virtual, and my hot loop pays the price.
 
 This kind of situation has a name: `profile pollution`. If you want a deeper explanation, I recommend this post: [Notes on debugging HotSpot's JIT compilation](https://jornvernee.github.io/hotspot/jit/2023/08/18/debugging-jit.html#3-printing-inlining-traces) 
 
@@ -159,7 +153,7 @@ The key idea is summarized nicely there:
 
 `SwissMap` has a useful invariant: if a control byte indicates a valid candidate slot, then `keys[idx]` should not be `null`. Empty slots don't produce candidates; candidates imply there's a key stored.
 
-So `Objects.equals(keys[idx], key)` is doing work I don't need:
+`Objects.equals(keys[idx], key)` is doing work I don't need:
 - null checks
 - an extra layer of indirection
 - and (critically) it moves the equals call site into a globally-shared megamorphic method (`Objects.equals`)
@@ -181,7 +175,7 @@ if (k == key || k.equals(key)) {
 This looks almost insultingly simple, but it changes something *important*:
 - The `equals()` call site moves into `SwissMap::findIndex` itself.
 - The receiver is now `k = keys[idx]`.
-- In most realistic use (and definitely in this benchmark), the receiver(e.g. the stored key) type is very stable.
+- In most realistic use (and definitely in this benchmark), the receiver (e.g., the stored key) type is very stable.
 - And because `k` is `non-null` by invariant, the hot path gets cleaner.
 
 In other words: I stopped asking `C2` to optimize a call site that's polluted by the whole universe and instead gave it a call site that lives right inside the hot loop with a much cleaner type profile.
@@ -199,11 +193,7 @@ cmp  w14, w5             ; compare against key's value
 b.ne ...
 ```
 
-No `{virtual_call}`. 
-
-No "spill half the world to the stack, then branch to `Integer::equals`." 
-
-Just: guard, load, compare.
+No `{virtual_call}`. No "spill half the world to the stack, then branch to `Integer::equals`." Just guard, load, compare.
 
 ## 5) Benchmark: a very real win from a tiny change
 
@@ -245,7 +235,7 @@ orr  x19, x19, x8, lsl #8       ; assemble final mask
 
 The nasty part is the **true dependency chain**: the same register is updated over and over, and the resulting mask is immediately consumed by the next step (`numberOfTrailingZeros`, index calculation, candidate loop…). That extends the critical path of the lookup.
 
-At that point, I wasn't "SIMD-bound" anymore. I was "mask materialization bound."
+At that point, I was "mask materialization bound," not "SIMD-bound" anymore.
 
 ## 7) Another observation: `ByteVector.fromArray` range checks & spills
 
@@ -273,21 +263,21 @@ Practically though, turning it off isn't a local tweak. It's controlled by a sys
 
 ## 8) I Didn't Plan to Use SWAR, But Here We Are
 
-So at some point I asked myself the slightly heretical question:
+At some point I asked myself the slightly heretical question:
 
 > What if I just… don't use the Vector API here?
 
 That's where **SWAR (SIMD Within A Register)** comes in.
 
-SWAR is sometimes called "poor person's SIMD," but I don't mean that in a dismissive way—it's more like a practical shortcut. 
+SWAR is sometimes called "poor person's SIMD," but I don't mean that in a dismissive way. It's more like a practical shortcut. 
 
 Instead of reaching for vector registers, you pack several tiny lanes (bytes, in our case) into a single 64-bit word and do "vector-ish" work with plain scalar integer instructions. The neat part is that a couple of well-known arithmetic/bitwise tricks are enough to turn "byte equality" into a compact bitmask. 
 
-No vectors, no lane extraction, and—most importantly for this story—no `toLong()` in the middle of the hot path. It's just one long load, a handful of ops, and you get a mask that tells you exactly which lanes matched. And if mask generation is what's slowing you down (rather than the comparison itself), SWAR can punch well above its weight.
+No vectors, no lane extraction, and no `toLong()` in the middle of the hot path. It's just one long load, a handful of ops, and you get a mask that tells you exactly which lanes matched. And if mask generation is what's slowing you down (rather than the comparison itself), SWAR can punch well above its weight.
 
 SIMD still tends to be the best option when the platform gives you an efficient way to do both halves of the job: compare and extract a mask. On Apple Silicon (ARM/NEON), though, the first half is usually fine while the second half can get… awkward. 
 
-SWAR changes the shape of the work: everything stays in general-purpose registers, and the "mask" you want falls out as a scalar value from the start. Yes, you give up some peak throughput on paper—but in a hash table probe loop, the thing that often matters more is critical-path latency. If SWAR shortens that path, it can end up faster where it counts.
+SWAR changes the shape of the work: everything stays in general-purpose registers, and the "mask" you want falls out as a scalar value from the start. Yes, you give up some peak throughput on paper, but in a hash table probe loop, the thing that often matters more is critical-path latency. If SWAR shortens that path, it can end up faster where it counts.
 
 ### What changes in the code (the SWAR "signature")
 
@@ -325,23 +315,23 @@ private int eqMask(long word, byte b) {
 ```
 - XOR makes matching bytes become `0x00`
 - The next line builds a borrow-safe per-byte "isZero" mask: it leaves `0x80` set in byte lanes where `x == 0`.
-- `& 0x8080...` keeps just the per-byte MSB flags—one bit per lane, still spaced out at bits 7, 15, 23, …
+- `& 0x8080...` keeps just the per-byte MSB flags: one bit per lane, still spaced out at bits 7, 15, 23, …
 - The multiply by `0x0204_0810_2040_81` is a packing trick: it "gathers" those spaced MSB bits into a single byte.
 - Finally, `>>> 56` selects that top byte, yielding an 8-bit mask where bit i tells you whether byte lane i matched.
 
-The important part isn't that it's clever—it's that it's scalar and produces a mask that's already ready for `numberOfTrailingZeros` without any vector-to-scalar extraction dance.
+The important part is that it's scalar and produces a mask that's already ready for `numberOfTrailingZeros` without any vector-to-scalar extraction dance.
 
 ## 9) What changed when SWAR entered the picture
 
 In the Vector API version, the hot region had a very recognizable shape:
--  load ctrl bytes into a vector register
+- load ctrl bytes into a vector register
 - `cmeq` compare against `h2`
 - extract a movemask
 - then immediately feed that mask into `tzcnt`/candidate iteration
 
-On x86, that "extract a movemask" step maps nicely to dedicated instructions. On NEON, it tends to become a little construction project—a vector-to-scalar extraction followed by a chain of shifts/ors to compress lane results.
+On x86, that "extract a movemask" step maps nicely to dedicated instructions. On NEON, it tends to become a little construction project: a vector-to-scalar extraction followed by a chain of shifts/ors to compress lane results.
 
-In the SWAR version, that entire class of work simply… isn't there. No `q` registers, no lane extraction, no `VectorMask.toLong()` synthesis. The hot loop becomes: load one `long`, do scalar ops, get a scalar mask.
+In the SWAR version, that entire class of work isn't there. No `q` registers, no lane extraction, no `VectorMask.toLong()` synthesis. The hot loop becomes: load one `long`, do scalar ops, get a scalar mask.
 
 ### The SWAR fingerprint broadcast is exactly what you'd hope
 
@@ -355,7 +345,7 @@ private static long broadcast(byte b) {
 }
 ```
 
-Under the hood, this works because `0x0101010101010101` is basically a "byte replicator": multiplying an 8-bit value by this constant produces the same value in every byte lane. There's no loop, no shifts, no per-lane insertion—just one arithmetic operation that the CPU is already good at.
+Under the hood, this works because `0x0101010101010101` is basically a "byte replicator": multiplying an 8-bit value by this constant produces the same value in every byte lane. There's no loop, no shifts, no per-lane insertion, just one arithmetic operation that the CPU is already good at.
 
 In the hot region, HotSpot emits exactly what you'd want to see:
 
@@ -405,26 +395,26 @@ No detours through `VectorMask` helpers, no extra materialization steps. It's al
 
 ## 10) …Okay, but did it actually get faster?
 
-At this point I had a SWAR probe loop that looked nicer in the disassembly—fewer moving parts, no `VectorMask.toLong()` detour, and a tighter scalar critical path.  But profiler aesthetics don't count as performance, so I did the only reasonable thing:
+At this point I had a SWAR probe loop that looked nicer in the disassembly: fewer moving parts, no `VectorMask.toLong()` detour, and a tighter scalar critical path. But profiler aesthetics don't count as performance, so I did the only reasonable thing:
 
 I ran the benchmark.
 
 ARM/NEON (Apple Silicon): the same `findIndex`, now in SWAR clothes
 On my M4 + Temurin 21, the `findIndex` loop came in at 2.690 ns/op.
-That's down from 3.56 ns/op with the SIMD (Vector API) version — about 24.4% faster on the same benchmark.
+That's down from 3.56 ns/op with the SIMD (Vector API) version, about 24.4% faster on the same benchmark.
 
 In other words: the hot path is now short enough that the measurement is basically "how quickly can we do a probe + a couple of candidate checks," without the earlier mask-extraction baggage dominating the profile.
 
 …and then I tried the same thing on a Windows PC
 
-Apple Silicon is the whole reason I went down this path, but I didn't want this to become a one-platform party trick. So I took the same benchmark harness I had been using, and ran it again on a Windows desktop environment—the "classic" world where x86 has strong SIMD support and mask extraction is not nearly as annoying.
+Apple Silicon is the whole reason I went down this path, but I didn't want this to become a one-platform party trick. So I took the same benchmark harness I had been using, and ran it again on a Windows desktop environment: the "classic" world where x86 has strong SIMD support and mask extraction is not nearly as annoying.
 
-The result genuinely surprised me. 
+The result surprised me. 
 
-SWAR was supposed to be a small ARM/NEON-specific experiment—a workaround for NEON's awkward movemask story.
+SWAR was supposed to be a small ARM/NEON-specific experiment: a workaround for NEON's awkward movemask story.
 But when I reran the exact same benchmark on my Windows box (`AMD Ryzen 5 5600, 6C/12T`), SWAR still came out ahead of the SIMD version.
 
-Even more unexpectedly, it was faster than the "cleaned up" SIMD baseline—the one where I'd already fixed the profiling pollution and simplified the `equals()` path.
+Even more unexpectedly, it was faster than the "cleaned up" SIMD baseline: the one where I'd already fixed the profiling pollution and simplified the `equals()` path.
 
 | put hit                                     | put miss                                      |
 |---------------------------------------------|-----------------------------------------------|
@@ -435,18 +425,18 @@ Even more unexpectedly, it was faster than the "cleaned up" SIMD baseline—the 
 | ![CPU: get hit](/images/further-optimizing-my-java-swiss-table/get-hit.png) | ![CPU: get miss](/images/further-optimizing-my-java-swiss-table/get-miss.png) |
 
 
-So for now, I'm taking the pragmatic route.
+For now, I'm taking the pragmatic route.
 
-SWAR started as a "let's see if this helps NEON" experiment, but it ended up being consistently fast across the machines I actually care about—including the one where I expected SIMD to shine. I'm not ready to claim I fully understand why it wins in every case yet (and I definitely don't trust a single benchmark to settle an argument).
+SWAR started as a "let's see if this helps NEON" experiment, but it ended up being consistently fast across the machines I care about, including the one where I expected SIMD to shine. I'm not ready to claim I fully understand why it wins in every case yet (and I definitely don't trust a single benchmark to settle an argument).
 
-But until I can explain these results with more confidence—and reproduce them across a wider set of CPUs and JDK builds—I'm going to treat SWAR as the default implementation. It's simple, it keeps the hot path predictable, and right now it's the version that keeps coming back with the best numbers.
+But until I can explain these results with more confidence, and reproduce them across a wider set of CPUs and JDK builds, I'm going to treat SWAR as the default implementation. It's simple, it keeps the hot path predictable, and right now it's the version that keeps coming back with the best numbers.
 
 One bonus I didn't fully appreciate until I started packaging things up: the SWAR version doesn't require enabling the incubating Vector API at all.
 
-That means no `--add-modules=jdk.incubator.vector`, no preview flags, and fewer "it works on my machine" caveats. It also makes the implementation much easier to ship on older JDKs—so even if SWAR ends up being "just a fallback" long-term, it's a pretty convenient one to have.
+That means no `--add-modules=jdk.incubator.vector`, no preview flags, and fewer "it works on my machine" caveats. It also makes the implementation much easier to ship on older JDKs, so even if SWAR ends up being "just a fallback" long-term, it's a pretty convenient one to have.
 
 ## P.S. If you want the code
 
 This post is basically the narrative version of an experiment I'm building in public: [**HashSmith**](https://github.com/bluuewhale/hash-smith), a small collection of fast, memory-efficient hash tables for the JVM.  
 
-If you want to run the benchmarks, sanity-check an edge case, or suggest a better probe/rehash strategy, I'd love issues/PRs
+If you want to run the benchmarks, sanity-check an edge case, or suggest a better probe/rehash strategy, I'd love issues/PRs.

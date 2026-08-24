@@ -16,7 +16,7 @@ categories = ['NestJS']
 이번에는 그 첫 시간으로 모든 NestJS 어플리케이션의 진입점에 해당하는 `NestFactory` 클래스에 대해 살펴보도록 하겠습니다.
 
 ## NestFactory
-Nestjs 공식문서를 살펴보면, 처음 마주하는 튜토리얼에서 다음과 같은 코드를 찾아볼 수 있습니다.
+NestJS 공식문서를 살펴보면, 처음 마주하는 튜토리얼에서 다음과 같은 코드를 찾아볼 수 있습니다.
 
 ```typescript
 import { NestFactory } from '@nestjs/core';
@@ -34,7 +34,7 @@ bootstrap();
 
 ## NestFactory.create()
 
-`NestFactory.create()`를 들여다보면 다음과 같이 구현되어 있습니다. 지금부터 한줄 한줄 차근차근 자세히 살펴보도록 하겠습니다.
+`NestFactory.create()`를 들여다보면 다음과 같이 구현되어 있습니다. 지금부터 한 줄 한 줄 차근차근 자세히 살펴보도록 하겠습니다.
 ```typescript
 // packages/core/nest-factory.ts
 public async create<T extends INestApplication = INestApplication>(
@@ -370,7 +370,7 @@ export class ModulesContainer extends Map<string, Module> {
 ```
 
 ## initialize()
-다음으로 `NestFactory`는 간단한 설정을 마친 후 `initialize()` 메서드를 호출합니다. `initalize()` 메서드의 핵심 역할은 크게 `DependenciesScanner`에 의한 모듈 등록 과정과 `InstanceLoader`에 의한 의존성 객체 생성 과정으로 나눌 수 있습니다.
+다음으로 `NestFactory`는 간단한 설정을 마친 후 `initialize()` 메서드를 호출합니다. `initialize()` 메서드의 핵심 역할은 크게 `DependenciesScanner`에 의한 모듈 등록 과정과 `InstanceLoader`에 의한 의존성 객체 생성 과정으로 나눌 수 있습니다.
 
 ```typescript
 // packages/core/nest-factory.ts

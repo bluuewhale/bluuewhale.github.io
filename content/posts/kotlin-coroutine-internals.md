@@ -18,7 +18,7 @@ The proposal describes a coroutine in one sentence as `an instance of suspendabl
 
 ## Suspension
 
-According to the proposal, suspendable means a coroutine can pause execution on the current thread, yield the thread so another coroutine can run, and later resume—possibly on a different thread.
+According to the proposal, suspendable means a coroutine can pause execution on the current thread, yield the thread so another coroutine can run, and later resume, possibly on a different thread.
 
 ## State Machine
 
@@ -83,7 +83,7 @@ Explicitly steering execution based on state is the state machine approach. Kotl
 
 ## Suspension point
 
-In the previous example, execution paused three times. The points where execution pauses are called suspension points. They’re crucial for achieving concurrency—the core goal of coroutines. A coroutine stops at a suspension point, and the thread can run a new or waiting coroutine.
+In the previous example, execution paused three times. The points where execution pauses are called suspension points. They’re crucial for achieving concurrency, the core goal of coroutines. A coroutine stops at a suspension point, and the thread can run a new or waiting coroutine.
 
 For example, if I/O would leave the CPU idle, you can place a suspension point there and schedule another coroutine instead, using CPU resources efficiently.
 
@@ -166,9 +166,9 @@ In real Kotlin, the compiler generates bytecode that turns a suspend function in
 
 ## Suspending function
 
-A suspending function is a special function that can potentially become a suspension point. But not every suspending function actually contains one.
+A suspending function is a special function that can potentially become a suspension point. But not every suspending function contains one.
 
-For example, the `sayHello()` function below is not a suspension point. In contrast, `sayHelloAfter()` is—specifically, the `delay` call inside it is the suspension point.
+For example, the `sayHello()` function below is not a suspension point. In contrast, `sayHelloAfter()` is a suspension point. More precisely, the `delay` call inside it is the suspension point.
 
 ```kotlin
 import kotlinx.coroutines.delay
@@ -288,7 +288,7 @@ The return type becomes `Any?` because every suspend function can return the spe
 
 ## Implementation
 
-Putting it all together, we can implement a coroutine like this. In reality, coroutines include many more features—`Dispatcher` to choose the thread for resumption, cancellation, structured concurrency, and more. For clarity, this example focuses on the key pieces: the state machine and CPS.
+Putting it all together, we can implement a coroutine like this. In reality, coroutines include many more features: a `Dispatcher` to choose the thread for resumption, cancellation, structured concurrency, and more. For clarity, this example focuses on the key pieces: the state machine and CPS.
 
 ```kotlin
 import java.util.*

@@ -16,7 +16,7 @@ Hi everyone. Last time, we covered how NestJS registers metadata for modules and
 ## Dependency Injection in NestJS
 Dependency Injection (DI) is a programming approach where you declare the dependencies between instances up front, and hand off the work of parsing those relationships and creating instances to an IoC container, usually managed by the framework. A full explanation of DI is out of scope here.
 
-Implementing DI well depends on parsing an object graph correctly and coordinating creation order. NestJS supports two styles: constructor-based and property-based. In the example below, `CatController` depends on `CatService`. So building a `CatController` instance requires first building a `CatService` instance and injecting it in. `InstanceLoader` and `Injector` are what actually direct and coordinate this process in NestJS.
+Implementing DI well depends on parsing an object graph correctly and coordinating creation order. NestJS supports two styles: constructor-based and property-based. In the example below, `CatController` depends on `CatService`. So building a `CatController` instance requires first building a `CatService` instance and injecting it in. `InstanceLoader` and `Injector` direct and coordinate this process in NestJS.
 
 ```typescript
 @Controller
@@ -32,7 +32,7 @@ class CatController {
 
 
 ## InstanceLoader
-`InstanceLoader` does exactly what its name suggests: it parses a module's metadata and creates its dependency objects (`provider`, `injectable`, `controller`). Its job splits into two phases: creating prototypes, then creating instances. `InstanceLoader` builds the prototype objects for dependencies first, then uses them to build instances. Look at the implementation and you'll notice most of `InstanceLoader`'s real work is delegated to `Injector`.
+`InstanceLoader` does exactly what its name suggests: it parses a module's metadata and creates its dependency objects (`provider`, `injectable`, `controller`). Its job splits into two phases: creating prototypes, then creating instances. `InstanceLoader` builds the prototype objects for dependencies first, then uses them to build instances. Look at the implementation and you'll notice `InstanceLoader` delegates most of its real work to `Injector`.
 
 
 ```typescript

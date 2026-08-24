@@ -13,7 +13,7 @@ alt = 'Visualization used in the SwissTable explanation'
 hiddenInSingle = true
 +++
 
-## Swiss Tables:A Modern, High-Performance Hash Table
+## Swiss Tables: A Modern, High-Performance Hash Table
 
 Swiss Table is a high-performance hash table design introduced by Google engineers in 2017. It has since inspired many standard-library implementations across languages, including:
 - [Go 1.24 ships its map with this design (up to 60% faster)](https://go.dev/blog/swisstable)
@@ -22,7 +22,7 @@ Swiss Table is a high-performance hash table design introduced by Google enginee
 
 ## Open Addressing, Briefly
 
-An open addressing hash table is one of the implementation methods for hash tables. Unlike separate chaining — which uses external data structures such as linked lists or trees — open addressing implements the entire hash table as a single contiguous array.
+An open addressing hash table is one of the implementation methods for hash tables. Unlike separate chaining, which uses external data structures such as linked lists or trees, open addressing implements the entire hash table as a single contiguous array.
 
 In an open addressing hash table, when a hash collision occurs, the algorithm probes other empty slots within the table to find a location where the key can be placed.
 
@@ -37,7 +37,7 @@ Typical examples of open addressing strategies include:
 
 ## Control Bytes
 
-Each slot carries a 1-byte metadata called a control byte that speeds up lookups and inserts. Control bytes help you quickly spot empty slots, and the short H2 fingerprint gives fast first-pass matches so each probe does less work.
+Each slot carries 1 byte of metadata called a control byte that speeds up lookups and inserts. Control bytes help you quickly spot empty slots, and the short H2 fingerprint gives fast first-pass matches so each probe does less work.
 
 {{< figure src="/images/swiss-table/1.png"
     alt="SwissTable control bytes slide"
@@ -54,12 +54,12 @@ Each slot carries a 1-byte metadata called a control byte that speeds up lookups
 
 ## Grouped SIMD Scans
 
-Modern hash table implementations actively leverage modern hardware to maximize performance.
+Modern hash table implementations rely on the underlying hardware to maximize performance.
 They often use SIMD vector operations to optimize bit operations on control bytes.
 
 The control byte array is processed in chunks the size of the SIMD register VL (e.g., 128 bits).
 This chunk is called a control byte group (Group).
-It is not a physically separate structure—just a logical processing unit.
+It is not a physically separate structure, just a logical processing unit.
 
 Typical bit split (assuming 64-bit hash):  
 - `H1`: upper 57 bits → group index  

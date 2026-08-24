@@ -33,11 +33,11 @@ hiddenInSingle = true
 
 ![](/images/debugging-false-sharing/image3.png)
 
-이 조합, 즉 높은 CPI와 늘어난 캐시 부하는 False Sharing의 전형적인 증상입니다.
+이 조합, 즉 높은 CPI와 늘어난 캐시 부하는 false sharing의 전형적인 증상입니다.
 
 ## False Sharing이란
 
-CPU는 메모리에서 특정 주소를 읽을 때 항상 고정된 크기(보통 64바이트) 단위로 데이터를 가져옵니다. 이 단위가 캐시 라인입니다. 문제는 서로 아무 관계도 없는 두 데이터가, 크기가 작다는 이유만으로(예: int32 두 개) 메모리 상에서 우연히 인접해 같은 캐시 라인에 들어갈 수 있다는 점입니다. False Sharing은 바로 이 우연한 인접성 때문에 생기는 문제입니다.
+CPU는 메모리에서 특정 주소를 읽을 때 항상 고정된 크기(보통 64바이트) 단위로 데이터를 가져옵니다. 이 단위가 캐시 라인입니다. 문제는 서로 아무 관계도 없는 두 데이터가, 크기가 작다는 이유만으로(예: int32 두 개) 메모리 상에서 우연히 인접해 같은 캐시 라인에 들어갈 수 있다는 점입니다. false sharing은 바로 이 우연한 인접성 때문에 생기는 문제입니다.
 
 서로 다른 코어에서, 같은 캐시 라인에 속한 두 변수 x와 y를 각각 수정하는 상황을 생각해 보겠습니다.
 
@@ -63,7 +63,7 @@ for (int i = 0; i < 1000; ++i) {
 
 ![](/images/debugging-false-sharing/image4.png)
 
-False sharing이 벌어지면 캐시 무효화 탓에 CPU stall이 늘어 CPI가 치솟고, 캐시를 계속 비우고 다시 채워야 하니 L1/L3 대역폭도 덩달아 높아집니다. 정확히 넷플릭스가 관측한 현상과 일치합니다.
+false sharing이 벌어지면 캐시 무효화 탓에 CPU stall이 늘어 CPI가 치솟고, 캐시를 계속 비우고 다시 채워야 하니 L1/L3 대역폭도 덩달아 높아집니다. 정확히 넷플릭스가 관측한 현상과 일치합니다.
 
 ## 원인 규명과 해결
 
@@ -96,7 +96,7 @@ struct {
 
 ## 남아있던 True Sharing
 
-그런데 false sharing 병목이 풀리자, 이번에는 true sharing 문제가 새롭게 드러났습니다. False sharing이 서로 무관한 변수가 같은 캐시 라인에 우연히 겹쳐서 생기는 문제라면, true sharing은 실제로 서로 관련 있는 변수를 여러 코어가 동시에 빈번하게 읽고 쓰면서 생기는 문제입니다. 즉, 자주 접근되는 공유 변수가 실제로 존재한다는 뜻입니다.
+그런데 false sharing 병목이 풀리자, 이번에는 true sharing 문제가 새롭게 드러났습니다. false sharing이 서로 무관한 변수가 같은 캐시 라인에 우연히 겹쳐서 생기는 문제라면, true sharing은 실제로 서로 관련 있는 변수를 여러 코어가 동시에 빈번하게 읽고 쓰면서 생기는 문제입니다. 즉, 자주 접근되는 공유 변수가 실제로 존재한다는 뜻입니다.
 
 이번 원인은 `super_cache_addr`라는 변수였습니다. 넷플릭스 팀은 이 값을 아예 캐싱하지 않도록 설정을 바꾸는 방식으로 true sharing을 해소했습니다.
 
@@ -116,9 +116,9 @@ struct {
 
 원문을 끝까지 읽고도 완전히 풀리지 않은 부분이 두 가지 있었습니다.
 
-첫 번째는 MACHINE_CLEAR 빈도가 왜 함께 증가했는가입니다. False sharing으로 L1 캐시 무효화와 CPU stall이 늘어나는 것까지는 직관적으로 이해가 되는데, false sharing이 MACHINE_CLEAR를 유발하는 hazard의 직접적인 원인이라는 연결 고리는 원문만으로는 다소 불명확했습니다.
+첫 번째는 MACHINE_CLEAR 빈도가 왜 함께 증가했는가입니다. false sharing으로 L1 캐시 무효화와 CPU stall이 늘어나는 것까지는 직관적으로 이해가 되는데, false sharing이 MACHINE_CLEAR를 유발하는 hazard의 직접적인 원인이라는 연결 고리는 원문만으로는 다소 불명확했습니다.
 
-두 번째는 CPU를 업그레이드하기 전에는 왜 같은 문제가 드러나지 않았는가입니다. 물리 코어 수가 늘어나면 false sharing이 심해지는 것 자체는 자연스럽지만, 그렇다면 업그레이드 이전에도 같은 문제가 정도만 약하게 존재했어야 하는 것이 아닌가 하는 의문이 남습니다.
+두 번째는 CPU를 업그레이드하기 전에는 왜 같은 문제가 드러나지 않았는가입니다. 물리 코어 수가 늘어나면 false sharing이 심해지는 것 자체는 자연스럽지만, 그렇다면 업그레이드 이전에도 같은 문제가 약한 정도로나마 이미 존재했어야 하는 것이 아닌가 하는 의문이 남습니다.
 
 ## References
 - [Seeing through hardware counters: a journey to threefold performance increase (Netflix Tech Blog)](https://netflixtechblog.com/seeing-through-hardware-counters-a-journey-to-threefold-performance-increase-2721924a2822)

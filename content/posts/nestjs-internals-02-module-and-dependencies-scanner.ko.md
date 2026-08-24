@@ -39,7 +39,7 @@ export function Module(metadata: ModuleMetadata): ClassDecorator {
 
 ## Reflect
 
-Reflect는 런타임에 모든 javascript 객체와 그 객체의 프로퍼티에 다양한 메타데이터를 추가하여 메타프로그래밍(metaprogramming)을 가능하게 해 주는, javascript에 내장된 전역 객체입니다. Reflect에 관한 더 자세한 내용은 [proposal](https://rbuckton.github.io/reflect-metadata/#introduction)과 [API 문서](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect)에서 확인할 수 있습니다.
+Reflect는 런타임에 모든 JavaScript 객체와 그 객체의 프로퍼티에 다양한 메타데이터를 추가하여 메타프로그래밍(metaprogramming)을 가능하게 해 주는, JavaScript에 내장된 전역 객체입니다. Reflect에 관한 더 자세한 내용은 [proposal](https://rbuckton.github.io/reflect-metadata/#introduction)과 [API 문서](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Reflect)에서 확인할 수 있습니다.
 
 
 ## DependenciesScanner

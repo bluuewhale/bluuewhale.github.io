@@ -14,7 +14,7 @@ image = 'images/spinlock-vs-mutex/image1.png'
 hiddenInSingle = true
 +++
 
-Locks split into two broad families: spinlocks, which run entirely in userspace on raw CPU instructions, and mutexes, which lean on the kernel. Both exist to guarantee mutual exclusion, but they get there differently, and that difference decides which workload each one fits.
+Locks split into two broad families: spinlocks, which run entirely in userspace on raw CPU instructions, and mutexes, which lean on the kernel. Both exist to guarantee mutual exclusion, but they get there differently, and that difference determines which workload each one fits.
 
 ## Spinlock
 
@@ -28,7 +28,7 @@ Most CPUs ship a dedicated instruction for this. On x86 it's `LOCK CMPXCHG`. The
 
 A cache line is the smallest unit a CPU cache moves and keeps coherent. Most modern CPUs use 64-byte lines, so reading even a single 8-byte value pulls in the full 64 bytes around it. That design pays off for spatial locality, but it also means two unrelated variables that happen to share a cache line can trigger false sharing.
 
-The cache coherence protocol is the inter-core protocol that keeps every core's cache in sync on a multicore machine. The most common one is MESI, which assigns each cache line one of four states: Modified (this core holds the newest value; memory may still be stale), Exclusive (only this core holds it, unmodified), Shared (multiple cores hold it read-only), and Invalid (not in this core's cache). Writing to a line requires holding it in M or E; S only permits reads. Most modern CPUs implement this through invalidation: a core sends a Read For Ownership (RFO) request, the interconnect relays it, every other core holding that line flips it to Invalid, and only then does the requesting core get ownership (M or E). These messages travel through the L1/L2 cache controllers and the interconnect.
+Cache coherence is the inter-core protocol that keeps every core's cache in sync on a multicore machine. The most common one is MESI, which assigns each cache line one of four states: Modified (this core holds the newest value; memory may still be stale), Exclusive (only this core holds it, unmodified), Shared (multiple cores hold it read-only), and Invalid (not in this core's cache). Writing to a line requires holding it in M or E; S only permits reads. Most modern CPUs implement this through invalidation: a core sends a Read For Ownership (RFO) request, the interconnect relays it, every other core holding that line flips it to Invalid, and only then does the requesting core get ownership (M or E). These messages travel through the L1/L2 cache controllers and the interconnect.
 
 Because the whole thing runs in userspace, a spinlock never triggers a system call. The tradeoff shows up under contention: a thread stuck spinning burns CPU the entire time it waits.
 
@@ -36,7 +36,7 @@ Because the whole thing runs in userspace, a spinlock never triggers a system ca
 
 A mutex spans both userspace and kernel space. Most modern kernels implement it as a two-tier structure. Under no contention, it takes the same fast path as a spinlock, grabbing the lock with a single CAS. When that fails, it falls to the slow path: a system call, `futex(FUTEX_WAIT)`, that parks the thread.
 
-So under no contention, a mutex is just as fast as a spinlock, one CAS and done. Under contention, it avoids wasting CPU by context-switching the thread out, but that protection isn't free. The system call alone costs around 500ns, and the context switch itself runs 3 to 5μs.
+Under no contention, a mutex is just as fast as a spinlock, one CAS and done. Under contention, it avoids wasting CPU by context-switching the thread out, but that protection isn't free. The system call alone costs around 500ns, and the context switch itself runs 3 to 5μs.
 
 ## Spinlock vs Mutex
 
@@ -102,7 +102,7 @@ public class ConcurrentStack <E> {
 }
 ```
 
-Both `push` and `pop` follow the same shape: read the current `top`, link the new node to it, then swap `top` in with a CAS. If another thread changes `top` in between, the CAS fails and the loop just tries again from scratch. That's how the stack stays consistent without ever taking a lock.
+Both `push` and `pop` follow the same shape: read the current `top`, link the new node to it, then swap `top` in with a CAS. If another thread changes `top` in between, the CAS fails and the loop tries again from scratch. That's how the stack stays consistent without ever taking a lock.
 
 ## References
 - [Spinlocks vs. Mutexes: When to Spin and When to Sleep](https://howtech.substack.com/p/spinlocks-vs-mutexes-when-to-spin)

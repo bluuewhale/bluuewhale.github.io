@@ -13,19 +13,19 @@ alt = 'iptables mangle 테이블의 패킷 처리 흐름'
 hiddenInSingle = true
 +++
 
-> 이 글은 원문 [A Deep Dive into Iptables and Netfilter Architecture](https://www.digitalocean.com/community/tutorials/a-deep-dive-into-iptables-and-netfilter-architecture)을 번역하여 작성한 글입니다.
+> 이 글은 원문 [A Deep Dive into Iptables and Netfilter Architecture](https://www.digitalocean.com/community/tutorials/a-deep-dive-into-iptables-and-netfilter-architecture)를 번역하여 작성한 글입니다.
 
-## iptable란?
+## iptables란?
 `iptables`는 `netfilter` 프레임워크를 제어하는 데 사용되는, 리눅스 커널에 내장된 네트워크 스택입니다. NIC를 거쳐 유입되는 모든 네트워크 패킷은 `netfilter`에 등록된 룰을 거쳐 제어됩니다. `iptables`는 `netfilter`가 패킷 조작을 위해 제공하는 훅에서 룰을 관리하는 역할을 합니다. `iptables`를 활용하면 특정 조건에 부합하는 패킷을 드롭하거나, 패킷의 출발지(source) 또는 목적지(destination)를 수정하는 것 등이 가능합니다.
 
 ## Netfilter Hook
-`netfilter`는 패킷 제어를 위한 다섯 가지 훅을 제공합니다. 모든 패킷은 전송 방향(`incoming` 혹은 `outgoing`)에 따라 각 훅에 등록된 패킷 제어 규칙이 적용됩니다. `netfilter`에서 지원하는 훅은 다음과 같습니다.
+`netfilter`는 패킷 제어를 위한 다섯 가지 훅을 제공합니다. 모든 패킷에는 전송 방향(`incoming` 혹은 `outgoing`)에 따라 각 훅에 등록된 패킷 제어 규칙이 적용됩니다. `netfilter`에서 지원하는 훅은 다음과 같습니다.
 
 - `NF_IP_PRE_ROUTING`: 호스트로 들어오는(`incoming`) 트래픽에 대해 가장 먼저 적용되는 훅으로, 패킷을 라우팅하기 이전에 적용됩니다.
 
 - `NF_IP_LOCAL_IN`: 로컬 시스템으로 향하는 `incoming` 트래픽에 대해 적용되는 훅입니다.
 
-- `NF_IP_FORWARE`: 다른 호스트로 포워딩되는 트래픽에 대해 적용되는 훅입니다.
+- `NF_IP_FORWARD`: 다른 호스트로 포워딩되는 트래픽에 대해 적용되는 훅입니다.
 
 - `NF_IP_LOCAL_OUT`: 로컬 시스템에서 외부로 나가는(`outgoing`) 트래픽에 대해 가장 먼저 적용되는 훅입니다.
 
@@ -81,11 +81,11 @@ hiddenInSingle = true
 
 ### Incoming Packet
 
-NIC를 거쳐 들어온 패킷에는 가장 먼저 `NF_IP_PRE_ROUNTING` 훅이 실행됩니다. 이때, `NF_IP_PRE_ROUTING` 훅과 연관된 `PREROUTING` 체인이 실행됩니다. `PREROUTING` 훅이 등록된 모든 테이블 중 `raw` 테이블이 가장 먼저 적용되어 연결 상태를 제어하고 패킷에 마킹을 남깁니다. 그 후, `mangle`, `nat(DNAT)` 테이블을 각각 거쳐 라우팅 여부가 결정됩니다.
+NIC를 거쳐 들어온 패킷에는 가장 먼저 `NF_IP_PRE_ROUTING` 훅이 실행됩니다. 이때, `NF_IP_PRE_ROUTING` 훅과 연관된 `PREROUTING` 체인이 실행됩니다. `PREROUTING` 훅이 등록된 모든 테이블 중 `raw` 테이블이 가장 먼저 적용되어 연결 상태를 제어하고 패킷에 마킹을 남깁니다. 그 후, `mangle`, `nat(DNAT)` 테이블을 각각 거쳐 라우팅 여부가 결정됩니다.
 
 패킷이 로컬 시스템을 향하는 경우에는, `NF_IP_LOCAL_IN` 훅과 연관된 `INPUT` 체인이 실행됩니다. `mangle`, `filter` 테이블에 등록된 `INPUT` 체인이 순서대로 적용되어 최종적으로 허용/거부 여부가 결정됩니다.
 
-만약 패킷이 외부 호스트로 포워딩되는 경우에는 `NF_IP_FORWARD` 훅과 연관된 `FORWARD` 체인이 실행됩니다. `FORWARD` 체인은 `INPUT` 체인과 동일하게 `mangle`, `filter` 테이블 순으로 적용됩니다. 이후, `mangle`, `nat(DNAT)` 테이블에 등록된 `POSTROUTING` 체인들이 순서대로 적용됩니다.
+만약 패킷이 외부 호스트로 포워딩되는 경우에는 `NF_IP_FORWARD` 훅과 연관된 `FORWARD` 체인이 실행됩니다. `FORWARD` 체인은 `INPUT` 체인과 동일하게 `mangle`, `filter` 테이블 순으로 적용됩니다. 이후, `mangle`, `nat(SNAT)` 테이블에 등록된 `POSTROUTING` 체인들이 순서대로 적용됩니다.
 
 ### Outgoing Packet
 로컬 호스트에서 출발하는 패킷에는 가장 먼저 `OUTPUT` 체인이 적용됩니다. `PREROUTING` 체인과 유사하게, `raw` 테이블을 거쳐 연결 상태가 가장 먼저 마킹되며, `mangle`, `nat(DNAT)`, `filter` 테이블에 등록된 `OUTPUT` 체인이 순서대로 실행됩니다. 이후, `mangle`, `nat(SNAT)` 테이블에 등록된 `POSTROUTING` 체인을 거쳐 최종적으로 NIC를 통해 외부로 나가게 됩니다.
@@ -111,10 +111,10 @@ NIC를 거쳐 들어온 패킷에는 가장 먼저 `NF_IP_PRE_ROUNTING` 훅이 �
 
 #### Terminating target
 `terminating target`은 패킷의 허용/거부 여부를 결정합니다.
-`termination target`이 실행된 경우에는, 해당 체인에 포함된 나머지 규칙들이 실행되지 않고 다음 체인으로 넘어갑니다.
+`terminating target`이 실행된 경우에는, 해당 체인에 포함된 나머지 규칙들이 실행되지 않고 다음 체인으로 넘어갑니다.
 
 #### Non-terminating target
-`non-terminating target`은 체인 내부에서 `terminating target` 이전에 실행되는 `action`들입니다. 하나의 체인에서 `terminatng target`이 실행되기 전까지 여러 개의 `non-terminating target`이 실행될 수 있습니다.
+`non-terminating target`은 체인 내부에서 `terminating target` 이전에 실행되는 `action`들입니다. 하나의 체인에서 `terminating target`이 실행되기 전까지 여러 개의 `non-terminating target`이 실행될 수 있습니다.
 
 ## References
 - [A Deep Dive into Iptables and Netfilter Architecture](https://www.digitalocean.com/community/tutorials/a-deep-dive-into-iptables-and-netfilter-architecture)

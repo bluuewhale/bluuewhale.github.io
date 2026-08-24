@@ -16,7 +16,7 @@ hiddenInSingle = true
 
 > This post is my own write-up of [Rust hash iteration+reinsertion](https://accidentallyquadratic.tumblr.com/post/153545455987/rust-hash-iteration-reinsertion) and the related Rust issue/PR, written the way I understood them. The original is the authoritative source, so check it directly for the exact details.
 
-I want to walk through an interesting bug that showed up in Rust's `HashMap`. The code looks completely ordinary, yet under the right conditions, an operation that should be O(n) blows up to O(n²).
+Rust's `HashMap` had an interesting bug. The code looks completely ordinary, yet under the right conditions, an operation that should be O(n) blows up to O(n²).
 
 ## Reproducing the Bug
 
@@ -40,7 +40,7 @@ fn main() {
 }
 ```
 
-Both T1 and T2 insert elements one at a time, so you'd expect both to run in O(n). T1 does. T2 takes something close to O(n²). Same kind of work, wildly different cost. Why?
+Both T1 and T2 insert elements one at a time, so you'd expect both to run in O(n). T1 does, but T2 takes something close to O(n²), even though it's doing the same kind of work. Why?
 
 ## When This Bug Shows Up
 
@@ -53,7 +53,7 @@ This isn't a problem with hash tables in general. It needs all of these conditio
 - Bucket position computed as `hash & (capacity - 1)`
 - A high load factor (say, 0.9)
 
-The uncomfortable part is that most open-addressing hash table implementations satisfy every one of these by default. This isn't some exotic misconfiguration. It's the ordinary shape of the data structure itself.
+The uncomfortable part is that most open-addressing hash table implementations satisfy every one of these by default. It's the ordinary shape of the data structure itself.
 
 ## Why It Happens
 

@@ -14,13 +14,13 @@ image = 'images/kip-932-queues-for-kafka/image3.png'
 hiddenInSingle = true
 +++
 
-A Kafka partition has always been limited to one consumer at a time. That coupled partition count and consumer count tightly together, and scaling throughput often meant splitting a topic into far more partitions than the data itself justified. Plenty of workloads genuinely fit a queue-style model better, where several consumers split the work on one partition, but the old structure had no way to express that. [KIP-932: Queues for Kafka](https://cwiki.apache.org/confluence/display/KAFKA/KIP-932%3A+Queues+for+Kafka) removes that constraint with a new group type: the Share Group.
+A Kafka partition has always been limited to one consumer at a time. That coupled partition count and consumer count tightly together, and scaling throughput often meant splitting a topic into far more partitions than the data itself justified. Plenty of workloads fit a queue-style model better, where several consumers split the work on one partition, but the old structure had no way to express that. [KIP-932: Queues for Kafka](https://cwiki.apache.org/confluence/display/KAFKA/KIP-932%3A+Queues+for+Kafka) removes that constraint with a new group type: the Share Group.
 
 ## Share Group
 
 A Share Group is a new group type (`share`) that sits alongside the traditional consumer group. The biggest difference: multiple consumers can share a single partition at the same time. A group's consumer count can exceed the topic's total partition count, acknowledgment happens per record, and each message tracks how many times it's been delivered.
 
-When a consumer in a Share Group reads a record, that record enters the Acquired state for a fixed window (30 seconds by default), during which no other consumer can touch it. From there, a consumer can take one of four actions: acknowledge, marking the record processed successfully; release, unlocking it so another consumer can pick it up; reject, marking it unprocessable and moving it to Archived; or simply do nothing, in which case it auto-releases once the window expires. Once a record exceeds its configured retry count, it moves to Archived and stops being delivered to anyone.
+When a consumer in a Share Group reads a record, that record enters the Acquired state for a fixed window (30 seconds by default), during which no other consumer can touch it. From there, a consumer can take one of four actions: acknowledge, marking the record processed successfully; release, unlocking it so another consumer can pick it up; reject, marking it unprocessable and moving it to Archived; or do nothing, in which case it auto-releases once the window expires. Once a record exceeds its configured retry count, it moves to Archived and stops being delivered to anyone.
 
 ## Record Lifecycle
 
@@ -72,7 +72,7 @@ A Share Group needs an assignor to distribute partitions, and KIP-932 currently 
 | M5-M8 subscribe to T1 | M1-M8 | T1:0-3 | Co-assign 0,1,2,3 to M5,M6,M7,M8 respectively | 8 members split 4 partitions, two members per partition |
 | Everyone but M2 leaves | M2 | T1:0-3 | Assign 0, 2, 3 to M2 | M2 → T1:0,1,2,3 |
 
-Once members outnumber partitions, multiple members end up sharing a partition. As members leave, the ones remaining absorb the freed-up partitions. The assignor just keeps rebalancing toward even coverage.
+Once members outnumber partitions, multiple members end up sharing a partition. As members leave, the ones remaining absorb the freed-up partitions. The assignor keeps rebalancing toward even coverage.
 
 ## No Ordering Guarantee
 
@@ -84,7 +84,7 @@ By default, lifecycle is managed per record, but you can also work in batches to
 
 ## Reading Transactional Records and Exactly-Once
 
-A regular consumer group lets each consumer set its own isolation level. In a Share Group, isolation level can only be set at the group level. And right now, Share Groups don't support exactly-once semantics, though there are signs the direction is being actively considered.
+A regular consumer group lets each consumer set its own isolation level. In a Share Group, isolation level can only be set at the group level. And right now, Share Groups don't support exactly-once semantics, though there are signs the direction is being considered.
 
 ![](/images/kip-932-queues-for-kafka/image6.png)
 

@@ -76,7 +76,7 @@ fun main() {
 }
 ```
 
-위 예시에서 `MyCoroutine` 함수는 중단 가능한 함수입니다. 함수를 중단 가능하도록 만들기 위해서는 함수의 실행과 관련된 변수(ex, program counter)를 별도로 관리할 필요가 있습니다. `MyCoroutine`은 `label`이라는 변수를 활용하여 내부적으로 중단에 따른 실행 흐름을 제어합니다.
+위 예시에서 `MyCoroutine` 함수는 중단 가능한 함수입니다. 함수를 중단 가능하도록 만들기 위해서는 함수의 실행과 관련된 변수(예: program counter)를 별도로 관리할 필요가 있습니다. `MyCoroutine`은 `label`이라는 변수를 활용하여 내부적으로 중단에 따른 실행 흐름을 제어합니다.
 
 이처럼 상태에 따라 명시적으로 실행 흐름을 제어하는 방법론을 state machine이라고 합니다. Kotlin의 coroutine도 state machine 방법론을 채택하여 구현되어 있습니다. 위 예시는 이를 비유적으로 표현하기 위한 간단한 예시입니다.
 
@@ -84,7 +84,7 @@ fun main() {
 
 앞선 예시에서는 코드 실행 중 총 세 차례의 중단이 발생하였습니다. coroutine에서는 코드 실행 흐름에서 중단이 발생하는 지점을 suspension point라고 합니다. suspension point는 coroutine의 핵심 목표인 동시성 확보를 위해 매우 중요합니다. coroutine은 suspension point에서 실행을 중단합니다. 중단된 coroutine이 위치한 thread에서는 새롭게 생성되었거나 대기 중인 coroutine을 실행합니다.
 
-예를 들어, I/O 작업을 위해 CPU 유휴 시간이 발생하는 지점을 suspension point로 설정하고, suspend가 발생한 coroutine을 대신하여 새로운 coroutine을 스케줄링함으로써 CPU 자원을 효율적으로 사용할 수 있습니다.
+예를 들어, I/O 작업으로 인해 CPU 유휴 시간이 발생하는 지점을 suspension point로 설정하고, suspend가 발생한 coroutine을 대신하여 새로운 coroutine을 스케줄링함으로써 CPU 자원을 효율적으로 사용할 수 있습니다.
 
 이 모습은 OS에서 이루어지는 context switch와 유사하게 보입니다. 다만, 시분할 알고리즘 등을 활용하여 강제적으로 context switch가 일어나는 preemptive multitasking과 달리, coroutine은 coroutine switch가 일어나는 suspension point를 사용자의 코드가 직접 정의하는 cooperative multitasking 방식에 해당합니다. Cooperative multitasking에서는 coroutine들에게 CPU가 효율적으로 분배될 수 있도록 적절하게 suspension point를 생성하는 것이 매우 중요합니다. 그렇다면, suspension point는 어떻게 만들어질까요?
 
@@ -167,7 +167,7 @@ fun main() {
 
 suspending function은 suspension point가 될 가능성을 지닌 특수한 함수입니다. 그러나, 모든 suspending function이 suspension point를 포함하는 것은 아닙니다.
 
-예를 들어, 아래의 `sayHello()` 함수는 suspension point로 동작하지 않습니다. 반면, `sayHelloAfter()` 함수는 suspension point로서 동작합니다. 엄밀하게는, `SayHelloAfter` 함수의 `delay` 함수가 suspension point에 해당합니다.
+예를 들어, 아래의 `sayHello()` 함수는 suspension point로 동작하지 않습니다. 반면, `sayHelloAfter()` 함수는 suspension point로서 동작합니다. 엄밀하게는, `sayHelloAfter` 함수의 `delay` 함수가 suspension point에 해당합니다.
 
 ```kotlin
 import kotlinx.coroutines.delay
@@ -222,7 +222,7 @@ public interface Continuation<in T> {
 
 Continuation interface에서는 왜 `suspend()` 와 같은 메서드를 제공하지 않을까요? 혹은, 왜 `resumeWith()` 라는 메서드를 제공하는 걸까요?
 
-먼저, 첫 번째 질문에 대해 답하자면, suspension point의 생성 여부는 suspend function이 결정합니다. 앞서 설명드린 바와 같이, Kotlin 컴파일러는 suspend function을 state machine 형태로 변환하여, suspend function의 반환 값에 따라 suspend 여부를 결정합니다. 따라서, Continuation을 suspend function으로 주입하여 `suspend` 와 같은 함수를 명시적으로 호출하도록 만들 필요가 없습니다. 단지, suspension point를 생성하고 싶은 경우, suspend function에서 `COROUTINE_SUSPENDED` 를 반환하면 그만입니다.
+먼저, 첫 번째 질문에 대해 답하자면, suspension point의 생성 여부는 suspend function이 결정합니다. 앞서 설명드린 바와 같이, Kotlin 컴파일러는 suspend function을 state machine 형태로 변환하여, suspend function의 반환 값에 따라 suspend 여부를 결정합니다. 따라서, Continuation을 suspend function에 주입하여 `suspend` 와 같은 함수를 명시적으로 호출하도록 만들 필요가 없습니다. 단지, suspension point를 생성하고 싶은 경우, suspend function에서 `COROUTINE_SUSPENDED` 를 반환하면 그만입니다.
 
 그렇다면, `resumeWith()` 메서드는 어떤 용도로 사용되는 걸까요? resumeWith는 I/O처럼 CPU 유휴 시간을 발생시키는 외부 함수가 작업을 완료한 후, coroutine을 재개할 수 있도록 제공되는 callback 용도의 함수입니다.
 
@@ -283,7 +283,7 @@ CPS 변환을 거친 후의 코드는 다음과 같습니다.
 fun <T> sayHello(continuation: Continuation<T>): Any?
 ```
 
-함수의 변환 타입이 `Any?`가 된 이유는, 모든 suspend function은 `COROUTINE_SUSPENDED` 라는 특수한 값을 반환할 수 있도록 설계되었기 때문입니다. Kotlin에서는 CPS 변환을 채택하여 suspend function에서 `Continuation.resumeWith()` 를 호출할 수 있도록 하였습니다.
+함수의 반환 타입이 `Any?`가 된 이유는, 모든 suspend function은 `COROUTINE_SUSPENDED` 라는 특수한 값을 반환할 수 있도록 설계되었기 때문입니다. Kotlin에서는 CPS 변환을 채택하여 suspend function에서 `Continuation.resumeWith()` 를 호출할 수 있도록 하였습니다.
 
 ## Implementation
 

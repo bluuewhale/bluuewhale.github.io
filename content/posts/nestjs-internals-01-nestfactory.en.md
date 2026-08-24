@@ -35,7 +35,7 @@ From this, you can tell that `NestFactory` reads `AppModule` and builds a `NestA
 
 ## NestFactory.create()
 
-Here's how `NestFactory.create()` is actually implemented. Let's go through it line by line.
+This is how `NestFactory.create()` is implemented. Let's go through it line by line.
 ```typescript
 // packages/core/nest-factory.ts
 public async create<T extends INestApplication = INestApplication>(
@@ -136,9 +136,9 @@ export abstract class AbstractHttpAdapter<
 }
 ```
 
-Here's something interesting: `AbstractHttpAdapter` implements some of these methods (`use`, `get`, `post`) by just forwarding to an `instance` typed as `any`. You've probably already noticed those method names look familiar.
+One interesting detail: `AbstractHttpAdapter` implements some of these methods (`use`, `get`, `post`) by forwarding to an `instance` typed as `any`. You've probably already noticed those method names look familiar.
 
-They should. They're the exact method names `express` uses for registering middleware and handlers. `NestFactory` actually depends on `express` by default, using `ExpressAdapter`, an implementation of `AbstractHttpAdapter` built on top of it. From this angle, NestJS is basically an `express` wrapper framework. If you already know `express`, that should feel reassuring.
+They should. They're the exact method names `express` uses for registering middleware and handlers. `NestFactory` depends on `express` by default, using `ExpressAdapter`, an implementation of `AbstractHttpAdapter` built on top of it. From this angle, NestJS is basically an `express` wrapper framework. If you already know `express`, that should feel reassuring.
 
 ```typescript
 // packages/platform-express/adapters/express-adapter.ts
@@ -166,7 +166,7 @@ export class NestFactoryStatic {
 ```
 
 ## ApplicationConfig
-Moving to the next line: `NestFactory` creates an `ApplicationConfig` instance.
+Next, `NestFactory` creates an `ApplicationConfig` instance.
 
 ```typescript
 // packages/core/nest-factory.ts
@@ -451,7 +451,7 @@ export class InstanceLoader {
 ```
 
 ## NestApplication
-And finally, the last step. Once module and dependency registration wrap up, `NestFactory` creates the `NestApplication` instance. It wraps that instance in a `Proxy` to handle error handling, method chaining, and fallbacks, and with that, `NestFactory`'s job is done.
+This is the final step. Once module and dependency registration wrap up, `NestFactory` creates the `NestApplication` instance. It wraps that instance in a `Proxy` to handle error handling, method chaining, and fallbacks, and with that, `NestFactory`'s job is done.
 
 ```typescript
 // packages/core/nest-factory.ts
@@ -487,7 +487,7 @@ export class NestFactory {
 ```
 
 ## Wrap-up
-This post traced how `NestFactory` builds `NestApplication`, the object that holds all of a service's logic. Next time, I'll cover how `NestApplication` actually handles an incoming request. Thanks for reading.
+In this post, I traced how `NestFactory` builds `NestApplication`, the object that holds all of a service's logic. Next time, I'll cover how `NestApplication` handles an incoming request. Thanks for reading.
 
 
 ## References

@@ -24,7 +24,7 @@ leader epoch에 대해 다루기 전에, 먼저 카프카에서 파티션 로그
 
 예시에서는 하나의 파티션에 3개의 replica가 존재하는 경우를 가정하였습니다. `broker-101`은 리더 브로커이며, 나머지 브로커(`broker-102`, `broker-103`)는 팔로워 브로커입니다. `min.isr`은 1을 가정하였습니다.
 
-#### Follwer Fetch Request
+#### Follower Fetch Request
 
 ![](/images/kafka-kip-101-leader-epoch/image2.png)
 
@@ -34,7 +34,7 @@ leader epoch에 대해 다루기 전에, 먼저 카프카에서 파티션 로그
 
 ![](/images/kafka-kip-101-leader-epoch/image3.png)
 
-리더 브로커는 팔로워 브로커가 보낸 `FetchRequet`의 offset을 확인하고 해당 오프셋 이후로 쌓인 데이터를 `FetchResponse`에 담아 전달합니다. 이 과정을 통해 하나의 팔로워 노드에 데이터 복제가 이뤄집니다.
+리더 브로커는 팔로워 브로커가 보낸 `FetchRequest`의 offset을 확인하고 해당 오프셋 이후로 쌓인 데이터를 `FetchResponse`에 담아 전달합니다. 이 과정을 통해 하나의 팔로워 노드에 데이터 복제가 이뤄집니다.
 
 #### Committing Partition Offsets
 
@@ -44,7 +44,7 @@ leader epoch에 대해 다루기 전에, 먼저 카프카에서 파티션 로그
 
 그런데, 카프카는 RPC call을 최소화하기 위해 `FetchResponse`에 대한 ack 응답을 전송하지 않습니다. 그렇다면 팔로워 노드에 데이터가 성공적으로 복제되었다는 사실을 리더 노드에 어떻게 전달할까요?
 
-카프카에서는 `FetchRequest`에 포함된 offset을 활용합니다. 팔로워 노드가 전송한 `FetchRequest`에 포함된 offset은 이전 데이터를 성공적으로 전달받았음을 의미합니다. 따라서, `FetchRequset`를 전달받은 리더 노드는 ISR에 포함된 팔로워 노드들의 `FetchRequest` 속 offset을 확인하고 이를 통해 `commit` 지점을 업데이트합니다. 또한, `FetchResponse`를 통해 팔로워 노드들에게 변경된 `commit` offset을 전달합니다. 마지막으로 `commit`된 offset을 `high watermark`라고 부릅니다.
+카프카에서는 `FetchRequest`에 포함된 offset을 활용합니다. 팔로워 노드가 전송한 `FetchRequest`에 포함된 offset은 이전 데이터를 성공적으로 전달받았음을 의미합니다. 따라서, `FetchRequest`를 전달받은 리더 노드는 ISR에 포함된 팔로워 노드들의 `FetchRequest` 속 offset을 확인하고 이를 통해 `commit` 지점을 업데이트합니다. 또한, `FetchResponse`를 통해 팔로워 노드들에게 변경된 `commit` offset을 전달합니다. 마지막으로 `commit`된 offset을 `high watermark`라고 부릅니다.
 
 ## 기존 High Watermark 방식의 Replication Protocol의 한계
 
@@ -65,7 +65,7 @@ High watermark 업데이트 지연이 발생한 브로커 노드가 급작스럽
 
 2. 요청을 수신한 리더 브로커 B는 1번 오프셋(m2)까지 복제가 완료된 것을 확인하고 high watermark를 업데이트합니다. 더 복제할 로그가 없으므로, 업데이트된 high watermark에 대한 정보만을 담은 `FetchResponse`를 팔로워 브로커 A에게 전송합니다.
 
-3. 팔로워 브로커 A가 `FetchResponse`를 수신하지 못하고 재시작됩니다. 재시작된 팔로워 브로커 A는 high watermark 이후의 데이터를 모두 삭제하고 리더 브로커 B에게 다시 `FetchRequset`를 전송합니다.
+3. 팔로워 브로커 A가 `FetchResponse`를 수신하지 못하고 재시작됩니다. 재시작된 팔로워 브로커 A는 high watermark 이후의 데이터를 모두 삭제하고 리더 브로커 B에게 다시 `FetchRequest`를 전송합니다.
 
 4. 리더 브로커 B가 갑작스러운 장애로 인해 다운됩니다.
 5. 메시지 m2가 유실됩니다.
@@ -77,9 +77,9 @@ Jun Rao는 이를 해결하기 위한 간단한 해결책을 2가지 제시합�
 
 > 1. 팔로워 브로커의 high watermark 업데이트를 마칠 때까지, 리더 브로커의 high watermark 업데이트를 지연시킨다.
 
-이 방법은 추가적인 RPC call을 발생시켜 kakfa의 log replication protocol의 전반적인 latency를 크게 증가시키므로 불가능하다고 판단합니다. 이는 ack를 제거하여 효율을 높인 kafka log replication protocol의 장점을 크게 하락시키는 문제가 있습니다.
+이 방법은 추가적인 RPC call을 발생시켜 kafka의 log replication protocol의 전반적인 latency를 크게 증가시키므로 불가능하다고 판단합니다. 이는 ack를 제거하여 효율을 높인 kafka log replication protocol의 장점을 크게 떨어뜨리는 문제가 있습니다.
 
-> 2. 팔로워 브로커가 재시작되면, 로컬에 남아있는 highwater mark 이후의 데이터를 즉시 삭제하는 것이 아니라, leader broker에 fetch 요청을 전송하고 그 결과를 바탕으로 결정한다.
+> 2. 팔로워 브로커가 재시작되면, 로컬에 남아있는 high watermark 이후의 데이터를 즉시 삭제하는 것이 아니라, leader broker에 fetch 요청을 전송하고 그 결과를 바탕으로 결정한다.
 
 이 방법은 시나리오 1에서 발생한 메시지 유실 문제를 해결할 수 있습니다. 그러나 high watermark에만 의존하는 복구 방식은 다음에 소개해드릴 상황을 근본적으로 해결할 수 없습니다.
 
@@ -105,7 +105,7 @@ Jun Rao는 이를 해결하기 위한 간단한 해결책을 2가지 제시합�
 
 Leader Epoch는 현재 파티션 리더 브로커에 대한 임시 식별자와 같은 개념입니다. 실제로는 0부터 시작하여 새로운 리더가 선출될 때마다 1씩 증가합니다. 리더 브로커가 바뀌면 leader epoch 또한 바뀌며, 동일한 파티션의 동일한 브로커가 다시 리더로 복귀하더라도 leader epoch은 이전과 다른 값을 갖습니다.
 
-각 파티션에 대한 leader epoch은 controller에 의해 관리되어, zookeeper에 저장되며, 매 새로운 리더 선출 시에 활용됩니다. 최근 버전에서는 내부적 구조가 위 그림과 정확히 일치하지 않을 수 있으므로, 당시 제안된 구조를 이해하는 참고용으로만 활용해주세요.
+각 파티션에 대한 leader epoch은 controller에 의해 관리되어, ZooKeeper에 저장되며, 매 새로운 리더 선출 시에 활용됩니다. 최근 버전에서는 내부적 구조가 위 그림과 정확히 일치하지 않을 수 있으므로, 당시 제안된 구조를 이해하는 참고용으로만 활용해주세요.
 
 각 브로커는 리더가 새롭게 선출될 때마다 leader epoch과 해당 시점의 offset을 기록합니다. 리더의 이름과 즉위일을 나열한 키-밸류로 이해하셔도 좋을 것 같습니다. 이를 `leader epoch sequence`라고 부릅니다. 브로커가 재시작될 때는, high watermark 대신 이 leader epoch sequence를 활용하여 복구를 진행하게 됩니다.
 
@@ -120,7 +120,7 @@ leader epoch을 활용하면 앞서 언급드린 두 가지 문제를 모두 해
 ![](/images/kafka-kip-101-leader-epoch/image8.png)
 
 1. 팔로워 브로커 A는 리더 브로커 B의 데이터를 모두 복제하였지만, high watermark를 업데이트하지 못한 상태로 종료되었습니다.
-2. 재시작된 팔로워 브로커 A는 리더 브로커에게 `LeaderEpochRequst`를 전송하고 현재 오프셋에 해당하는 2를 반환받습니다.
+2. 재시작된 팔로워 브로커 A는 리더 브로커에게 `LeaderEpochRequest`를 전송하고 현재 오프셋에 해당하는 2를 반환받습니다.
 3. 팔로워 브로커 A에 저장된 데이터의 길이가 해당 오프셋과 일치하므로, 팔로워 브로커 A는 high watermark와 상관없이 메시지를 삭제하지 않습니다.
 4. 리더 브로커 B가 장애로 인해 종료됩니다.
 5. 브로커 A가 새로운 리더로 선출되며 leader epoch 1을 부여받습니다. 이를 leader epoch sequence에 기록합니다.

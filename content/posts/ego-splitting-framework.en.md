@@ -19,21 +19,21 @@ hiddenInSingle = true
 
 ## Why Non-Overlapping Clustering Falls Short
 
-Real-world networks tend to have plenty of medium-sized communities (roughly 100 members), and a single node frequently belongs to several of them at once. Non-overlapping clustering algorithms assign each node to exactly one community, so they simply can't capture that structure.
+Real-world networks tend to have plenty of medium-sized communities (roughly 100 members), and a single node frequently belongs to several of them at once. Non-overlapping clustering algorithms assign each node to exactly one community, so they can't capture that structure.
 
-Algorithms that attempt overlapping clustering already existed, but most were either too complex, too inflexible, or lacked theoretical guarantees.
+Algorithms that attempt overlapping clustering already existed, but most were either too complex, too inflexible, or lacking in theoretical guarantees.
 
-There's a subtler problem too. At the macroscopic level, a single hub node can pull otherwise unrelated groups into one giant community. Picture running community detection on a social network's follow graph. Elon Musk is a businessman, a politician, and a scientist all at once. Cluster around him, and groups that barely overlap in reality, business leaders, politicians, scientists, can end up merged into a single community purely because of his presence.
+There's a subtler problem too. At the macroscopic level, a single hub node can pull otherwise unrelated groups into one giant community. Picture running community detection on a social network's follow graph. Elon Musk is a businessman, a politician, and a scientist all at once. Cluster around him, and groups that barely overlap in reality (business leaders, politicians, scientists) can end up merged into a single community purely because of his presence.
 
 ## Background: The Ego-Net
 
-The concept the paper builds on is the ego-net. For a node $u$, its ego-net ($G[N_u]$) is the induced subgraph made up only of $u$'s direct (1-hop) neighbors, $N_u$. Notably, $u$ itself is excluded.
+The concept the paper builds on is the ego-net. For a node $u$, its ego-net ($G[N_u]$) is the induced subgraph made up only of $u$'s direct (1-hop) neighbors, $N_u$. $u$ itself is excluded.
 
 ![](/images/ego-splitting-framework/image1.png)
 
 The induced subgraph concept is worth pinning down too. For a subset of nodes $S$ within a graph $G$, the induced subgraph $G[S]$ satisfies two properties: its node set is exactly $S$, and only edges between nodes within $S$ count; anything leaving $S$ is dropped.
 
-The non-overlapping clustering algorithm $A$ the paper works with takes a graph $G$ and partitions its nodes into $A(G) = (V_1, ..., V_t)$. Any two distinct clusters $V_i$ and $V_j$ must not overlap ($V_i \cap V_j = \emptyset$), and every node must belong to exactly one cluster ($V_1 \cup ... \cup V_t = V$). The authors note that any non-overlapping clustering algorithm can slot in here; the paper itself uses a label propagation algorithm based on the Absolute Potts Model, chosen for its high scalability on distributed processing over large graphs and because prior ego-net research had already relied on the same approach.
+The non-overlapping clustering algorithm $A$ the paper works with takes a graph $G$ and partitions its nodes into $A(G) = (V_1, ..., V_t)$. Any two distinct clusters $V_i$ and $V_j$ must not overlap ($V_i \cap V_j = \emptyset$), and every node must belong to exactly one cluster ($V_1 \cup ... \cup V_t = V$). The authors note that any non-overlapping clustering algorithm can slot in here; the paper itself uses a label propagation algorithm based on the Absolute Potts Model, chosen for its high scalability in distributed processing over large graphs and because prior ego-net research had already relied on the same approach.
 
 ## The Core Idea: Splitting an Ego
 
@@ -53,7 +53,7 @@ For each resulting partition, create a copy, a persona, of the original node $u$
 
 ![](/images/ego-splitting-framework/image3.png)
 
-Once every persona is created, the original node $u$ gets removed from the graph. Repeat this across every node in the graph, and the result is a new graph: the persona graph.
+Once every persona is created, remove the original node $u$ from the graph. Repeat this across every node in the graph, and the result is a new graph: the persona graph.
 
 ### Global Graph Partitioning
 
@@ -61,7 +61,7 @@ Now apply a non-overlapping clustering algorithm $A^g$ again, this time to the p
 
 ![](/images/ego-splitting-framework/image4.png)
 
-The whole pipeline comes down to this: split each node's ego locally into one persona per community it touches, expanding the graph; run ordinary non-overlapping clustering on that expanded graph a second time; then fold the personas back down to their original nodes. Overlapping clustering gets solved without modifying the non-overlapping algorithm at all, just by wrapping it twice.
+The whole pipeline: split each node's ego locally into one persona per community it touches, expanding the graph; run ordinary non-overlapping clustering on that expanded graph a second time; then fold the personas back down to their original nodes. This solves overlapping clustering without changing the non-overlapping algorithm at all, using nothing more than wrapping it twice.
 
 ## Why This Matters
 
@@ -81,4 +81,4 @@ and it comes out on top in experiments on real-world graph datasets as well.
 
 ## Wrap-up
 
-What makes the Ego-Splitting Framework compelling is that it doesn't attack a hard problem head-on. It routes around it by wrapping a familiar tool twice. Splitting a node's ego into one persona per community is the entire trick, and it's enough to solve overlapping clustering, a much harder problem, using nothing but well-understood, battle-tested non-overlapping clustering underneath.
+The Ego-Splitting Framework is compelling because it doesn't attack a hard problem head-on. It routes around it by wrapping a familiar tool twice. Splitting a node's ego into one persona per community is the entire trick, and it's enough to solve overlapping clustering, a much harder problem, using nothing but well-understood, battle-tested non-overlapping clustering underneath.

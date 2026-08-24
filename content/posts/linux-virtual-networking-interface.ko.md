@@ -23,7 +23,7 @@ hiddenInSingle = true
 
 ![](/images/linux-virtual-networking-interface/image1.png)
 
-아래 소스 코드는 리눅스에서 Bridge를 생성하고 서로 다른 네트워크 인터페이스와 연결하는 과정을 보여주는 예시이다. 이 과정을 거치면 브릿지를 통해 `VM 1`, `VM 2`와 `network naemspace 1`은 서로 통신할 수 있게 된다.
+아래 소스 코드는 리눅스에서 Bridge를 생성하고 서로 다른 네트워크 인터페이스와 연결하는 과정을 보여주는 예시이다. 이 과정을 거치면 브릿지를 통해 `VM 1`, `VM 2`와 `network namespace 1`은 서로 통신할 수 있게 된다.
 
 ```bash
 $ ip link add br0 type bridge # bridge 생성
@@ -34,7 +34,7 @@ $ ip link set veth1 master br0 # bridge와 network namespace 1를 veth로 연결
 ```
 
 ## Bonded Interface
-`Linux Bonding Driver`(네트워크 본딩)는 서로 다른 네트워크 인터페이스를 하나의 논리적 인터페이스로 묶는 기능을 수행한다. `Bonding Driver`는 크게 `hot-standby`와 `load balacing` 모드로 나뉜다.
+`Linux Bonding Driver`(네트워크 본딩)는 서로 다른 네트워크 인터페이스를 하나의 논리적 인터페이스로 묶는 기능을 수행한다. `Bonding Driver`는 크게 `hot-standby`와 `load balancing` 모드로 나뉜다.
 
 Hot-standby 모드는 네트워크 인터페이스를 `Active`와 `Standby`로 나누고 `Active`에서 네트워크 장애 발생 시, 트래픽을 `Standby`로 전송하여 장애에 대응하는 방식으로 작동한다.
 
@@ -42,7 +42,7 @@ Hot-standby 모드는 네트워크 인터페이스를 `Active`와 `Standby`로 �
 
 ![](/images/linux-virtual-networking-interface/image2.png)
 
-아래 소스 코드는 두 네트워크 인터페이스(`eth0`, `eth1`)를 `hot-standy` 모드로 묶는 예시이다.
+아래 소스 코드는 두 네트워크 인터페이스(`eth0`, `eth1`)를 `hot-standby` 모드로 묶는 예시이다.
 ```bash
 $ ip link add bond0 type bond miimon 100 mode active-backup # bond0 인터페이스 추가, 모니터링 주기 100ms, active-backup 모드
 $ ip link set eth0 master bond0 # eth0을 bond0 인터페이스에 추가

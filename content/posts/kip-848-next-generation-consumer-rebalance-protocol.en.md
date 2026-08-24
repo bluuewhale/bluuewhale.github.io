@@ -10,7 +10,7 @@ tags = ['Kafka', 'KIP', 'Consumer Group', 'Distributed Systems']
 categories = ['Kafka', 'Distributed Systems']
 +++
 
-Here's a rundown of [KIP-848: The Next Generation of the Consumer Rebalance Protocol](https://cwiki.apache.org/confluence/display/KAFKA/KIP-848%3A%2BThe%2BNext%2BGeneration%2Bof%2Bthe%2BConsumer%2BRebalance%2BProtocol), which reached GA in Kafka 4.0. Its two central goals: cut rebalance downtime to nearly zero when consumer group membership changes, and move most of the responsibility for rebalancing from the client to the broker.
+[KIP-848: The Next Generation of the Consumer Rebalance Protocol](https://cwiki.apache.org/confluence/display/KAFKA/KIP-848%3A%2BThe%2BNext%2BGeneration%2Bof%2Bthe%2BConsumer%2BRebalance%2BProtocol) reached GA in Kafka 4.0. Its two central goals: cut rebalance downtime to nearly zero when consumer group membership changes, and move most of the responsibility for rebalancing from the client to the broker.
 
 ## Background
 
@@ -18,7 +18,7 @@ The consumer group rebalancing protocol had been around for eight years, and it 
 
 The biggest one was a thick-client design that put too much responsibility on the client. When a bug showed up in consumer group rebalancing, fixing it meant fixing the client, and if you're running a cloud service, you can't force your users to patch their own clients. Since most of the logic ran on the client side, diagnosing problems from server-side logs alone was often impossible.
 
-The second problem: a single member's change, joining, leaving, or failing, triggered a rebalance for the entire group. Cooperative rebalancing had already improved on this, but only so much. Offset commits were blocked entirely while a rebalance was in progress, and that could stall processing in some applications outright.
+The second problem: a single member's change, joining, leaving, or failing, triggered a rebalance for the entire group. Cooperative rebalancing had already improved on this, but only so much. A rebalance in progress blocked offset commits entirely, stalling processing in some applications outright.
 
 A series of KIPs had chipped away at these problems incrementally, but that accumulated complexity, and it became clear the protocol needed a coherent redesign rather than another patch.
 
@@ -38,11 +38,11 @@ The group coordinator gets an event loop. The reason for adopting it is straight
 
 ### Coordinating Rebalances with Epochs
 
-The real core of the new protocol is three kinds of epoch.
+The real core of the new protocol is three kinds of epochs.
 
 The Group Epoch is a version number for the group's current metadata. It increments, and triggers a rebalance, whenever a member joins or leaves, a subscription changes, an assignor-related update happens, or partition metadata changes (a new topic, a change in partition count, and so on). Once the Group Epoch exceeds the Assignment Epoch, the group coordinator computes a new Target Assignment from the latest group metadata. That involves an Assignor Selection step to pick which assignor to use. Server-side options include range, which assigns matching partition numbers across topics, and uniform, which assigns partitions randomly; both default to sticky behavior that minimizes partition churn. A client-side assignor behaves much like the old client-driven rebalancing protocol.
 
-The Assignment Epoch is the number the group coordinator attaches when it computes a new Target Assignment. Once that target is finalized, this value gets set equal to the Group Epoch.
+The Assignment Epoch is the number the group coordinator attaches when it computes a new Target Assignment. Once that target is finalized, the group coordinator sets this value equal to the Group Epoch.
 
 The Member Epoch tells each member how far it's converged, specifically, which Target Assignment it currently reflects. Once a Target Assignment is set, members converge toward it incrementally. The group coordinator asks members to give up partitions they no longer need, then hands those reclaimed partitions to whichever member needs them. Once a member has fully converged to the Target Assignment, it updates its own Member Epoch to match the Assignment Epoch.
 
@@ -56,7 +56,7 @@ The new consumer protocol first shipped in Kafka 3.7 and [reached GA in 4.0](htt
 
 On the broker side, 4.0 and later use the new protocol by default. The `group.version` flag controls whether it's enabled, and `group.consumer.assignors` picks which assignor to use.
 
-The consumer side works a bit differently. Even on 4.0+, the default is still the old protocol; you have to explicitly set `group.protocol` to `consumer` to opt in. `group.remote.assignor` lets you pick which server-side assignor to use, and switching to the new protocol also adds [new metrics](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1068%3A+New+metrics+for+the+new+KafkaConsumer). In exchange, the new protocol simply ignores `heartbeat.interval.ms`, `session.timeout.ms`, `partition.assignment.strategy`, and `enforceRebalance(String)`/`enforceRebalance()`.
+The consumer side works a bit differently. Even on 4.0+, the default is still the old protocol; you have to explicitly set `group.protocol` to `consumer` to opt in. `group.remote.assignor` lets you pick which server-side assignor to use, and switching to the new protocol also adds [new metrics](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1068%3A+New+metrics+for+the+new+KafkaConsumer). In exchange, the new protocol ignores `heartbeat.interval.ms`, `session.timeout.ms`, `partition.assignment.strategy`, and `enforceRebalance(String)`/`enforceRebalance()`.
 
 ## Migration
 
@@ -66,7 +66,7 @@ Online migration works too. Roll out consumers configured with `group.protocol=c
 
 ## What's Still Missing
 
-Client-side assignor support isn't there yet ([KAFKA-18327](https://issues.apache.org/jira/browse/KAFKA-18327)), and rack-aware assignment isn't fully supported either ([KAFKA-17747](https://issues.apache.org/jira/browse/KAFKA-17747)). Right now, a rebalance only triggers when a topic's partition count changes. That gap gets closed by [KIP-1101](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1101%3A+Trigger+rebalance+on+rack+topology+changes), which landed in version 4.1.
+Client-side assignor support isn't there yet ([KAFKA-18327](https://issues.apache.org/jira/browse/KAFKA-18327)), and rack-aware assignment isn't fully supported either ([KAFKA-17747](https://issues.apache.org/jira/browse/KAFKA-17747)). Right now, a rebalance only triggers when a topic's partition count changes. [KIP-1101](https://cwiki.apache.org/confluence/display/KAFKA/KIP-1101%3A+Trigger+rebalance+on+rack+topology+changes) closed that gap and landed in version 4.1.
 
 ## Data Model
 

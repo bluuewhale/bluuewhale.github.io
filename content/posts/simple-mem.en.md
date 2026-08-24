@@ -31,19 +31,19 @@ hiddenInSingle = true
 > Some parts of the paper have been updated after this post was written (2026-01-24), so there may be differences from the version discussed here.
 
 ## Background
-LLMs are fundamentally stateless. As a result, previous inference outputs do not directly affect later outputs.
+LLMs are stateless. As a result, previous inference outputs do not directly affect later outputs.
 
 Because of this property, a plain LLM can fail to maintain continuity in long conversations. In other words, it may look like short-term memory loss, where it cannot remember what was just discussed.
 
 Researchers addressed this with a straightforward idea: store conversation history between the user and the LLM agent in a separate memory space, then inject relevant history into the prompt at each inference step so the model can sustain continuity.
 
-This approach is intuitive and effective, but it introduces context-length growth. As historical exchanges are added into the prompt, input length naturally becomes longer.
+This approach is intuitive and effective, but it introduces context-length growth. Adding historical exchanges to the prompt makes input length grow.
 
 Longer prompts cause secondary issues. First, prompt length can exceed the model's hard context limit, making inference impossible.
 
 In addition, longer context increases latency and can hurt quality. According to [Databricks research](https://www.databricks.com/blog/long-context-rag-performance-llms), excessive context can degrade RAG performance.
 
-Their experiments show that quality improves up to a point as more supporting context is added, but beyond that point quality plateaus or even drops. This pattern appears consistently across different LLM families.
+Their experiments show that quality improves up to a point as they add more supporting context, but beyond that point quality plateaus or even drops. This pattern appears consistently across different LLM families.
 
 ![Databricks Research Result](/images/simple-mem/databricks.webp)
 
@@ -77,12 +77,12 @@ To separate important dialogue from unimportant dialogue, the method estimates a
 
 ![entrophy](/images/simple-mem/entrophy.png)
 
-The information score ($H(W_t)$) is composed of the following terms:
+The information score ($H(W_t)$) combines the following terms:
 
 - $\frac{|\mathcal{E}_{new}|}{|W_t|}$: entity-level novelty
   - $|\mathcal{E}_{new}|$: the number of entities not seen in accumulated memory ($H_{prev}$)
   - $|W_t|$: the dialogue window length (overlapping sliding window size)
-  - In short, this term measures how much genuinely new entity-level information appears in the current window.
+  - In short, this term measures how much new entity-level information appears in the current window.
 - $1 - cos(E(W_t),E(H_{prev}))$: semantic divergence
   - $E(W_t)$: embedding of the current dialogue window
   - $E(H_{prev})$: embedding of past memory
@@ -91,7 +91,7 @@ The information score ($H(W_t)$) is composed of the following terms:
 
 **Filtering**
 
-The next step applies threshold-based filtering using the information score. If the score falls below a threshold ($\tau_{redundant}$), the window is treated as non-informative and dropped ($\varnothing$).
+The next step applies threshold-based filtering using the information score. If the score falls below a threshold ($\tau_{redundant}$), the method treats the window as non-informative and drops it ($\varnothing$).
 
 ![filtering](/images/simple-mem/filtering.png)
 
@@ -112,7 +112,7 @@ A memory unit is a context-grounded and reusable representation of dialogue cont
 
 #### Structured indexing
 
-Each memory unit is stored through three complementary index views:
+The system stores each memory unit through three complementary index views:
 
 ![structured indexing](/images/simple-mem/structured-indexing.png)
 
@@ -134,11 +134,11 @@ The affinity score combines:
 - $cos(v_i,v_j)$: semantic relatedness between two memory units
 - $e^{-\lambda |t_i - t_j|}$: temporal proximity between two memory units
 
-Then similar units are consolidated:
+Then the system consolidates similar units:
 
 ![memory consolidation](/images/simple-mem/memory-consolidation.png)
 
-In this step, units with affinity above a threshold are grouped ($C$), and an LLM-based synthesis function ($G_{syn}$) merges them into abstract memory units. The final output is an abstracted unit $M_{abs}$.
+In this step, the method groups units with affinity above a threshold ($C$), and an LLM-based synthesis function ($G_{syn}$) merges them into abstract memory units. The final output is an abstracted unit $M_{abs}$.
 
 For example, if there are many memories about ordering coffee at 8 a.m., the system can compress them into an abstract unit like "the user usually drinks coffee in the morning," preventing uncontrolled memory growth.
 
@@ -151,7 +151,7 @@ This idea of merging small episodic memories into a more abstract representation
 
 The final stage retrieves memory units for response generation.
 
-In standard RAG systems, top-k content is usually fetched with a fixed retrieval depth. This paper points out that the number of units needed varies by query complexity. It therefore proposes a query layer that dynamically adjusts retrieval depth.
+Standard RAG systems usually fetch top-k content at a fixed retrieval depth. This paper points out that the number of units needed varies by query complexity. It therefore proposes a query layer that dynamically adjusts retrieval depth.
 
 #### Hybrid Scoring Function
 
@@ -163,7 +163,7 @@ The paper defines a relevance score $S(q, m_k)$ between query ($q$) and memory u
 - $\lambda_2 \text{BM25}(q_{lex}, S_k)$: lexical overlap between query keywords and the memory unit
 - $\gamma I(R_k \models C_{meta})$: whether memory tags ($R_k$) satisfy query constraints ($C_{meta}$)
 
-Finally, the number of recalled units ($k_{dyn}$) is adjusted dynamically based on query complexity:
+Finally, the system dynamically adjusts the number of recalled units ($k_{dyn}$) based on query complexity:
 
 ![adaptive-k-retrieval](/images/simple-mem/adaptive-k-retrieval.png)
 
@@ -179,7 +179,7 @@ The paper claims that, when considering both effectiveness (F1) and efficiency (
 
 The evaluation focuses on LoCoMo and LongMemEval-S.
 
-LoCoMo is a long-context conversational benchmark with 200-400 turns and 1,986 evaluation questions. LongMemEval-S is designed to test precise retrieval over extremely long interaction histories. For LongMemEval-S, the paper uses an LLM-as-a-judge protocol with gpt-4.1-mini, labeling outputs as CORRECT or WRONG.
+LoCoMo is a long-context conversational benchmark with 200-400 turns and 1,986 evaluation questions. LongMemEval-S tests precise retrieval over extremely long interaction histories. For LongMemEval-S, the paper uses an LLM-as-a-judge protocol with gpt-4.1-mini, labeling outputs as CORRECT or WRONG.
 
 ### Results
 

@@ -21,7 +21,7 @@ Community detection is the problem of finding sets of densely connected nodes, c
 
 ## Modularity: Measuring How Well-Formed a Community Is
 
-Say you've formed a community. What does it mean for that community to be "good"? The most common answer in community detection is a metric called modularity. The intuition is simple: compute how many edges you'd expect inside this community if the graph's edges were wired up completely at random, then measure how far the actually observed edge count exceeds that expectation. If the connections are too dense to explain away as coincidence, that's evidence you've found a real community.
+Say you've formed a community. What does it mean for that community to be "good"? The most common answer in community detection is a metric called modularity. The intuition is simple: compute how many edges you'd expect inside this community if the graph's edges were wired up completely at random, then measure how far the observed edge count exceeds that expectation. If the connections are too dense to explain away as coincidence, that's evidence you've found a real community.
 
 For the simplest case, just two communities, modularity is defined as:
 
@@ -35,7 +35,7 @@ The key term is $\frac{k_v k_w}{2m}$. This is the null model, the probability th
 
 The term multiplying it, $\frac{s_v s_w + 1}{2}$, is spin-variable notation borrowed from physics, constructed so it equals 1 if $v$ and $w$ are in the same community and 0 otherwise. So modularity sums up that "excess over chance" term, but only over node pairs that share a community.
 
-The sign of $Q$ is meaningful on its own. $Q > 0$ means the community's internal connections are denser than random chance would produce, so it's not coincidental. $Q = 0$ means the community looks no different from random. $Q < 0$ means the connections are actually sparser than random.
+The sign of $Q$ is meaningful on its own. $Q > 0$ means the community's internal connections are denser than random chance would produce, so it's not coincidental. $Q = 0$ means the community looks no different from random. $Q < 0$ means the connections are sparser than random.
 
 ## Multiple Communities: The Generalized Form
 
@@ -65,15 +65,15 @@ Notice $\gamma$ multiplies the null-model term, $\frac{k_v k_w}{2m}$. Shrink it,
 
 Louvain, proposed in 2008, is the standard algorithm for optimizing modularity. It alternates between two phases. Local Moving examines each node in turn and greedily assigns it to whichever neighboring community would increase overall modularity the most. Once Local Moving stops finding improvements, Aggregation collapses every community found so far into a single node, producing a new, smaller graph. Local Moving then runs again on that collapsed graph, and the two phases keep alternating.
 
-The algorithm stops under any of three conditions: Local Moving no longer moves any node, overall modularity stops increasing, or Aggregation no longer shrinks the graph. What comes out is a hierarchical community structure, along with which community each node belongs to at each level.
+The algorithm stops under any of three conditions: Local Moving no longer moves any node, overall modularity stops increasing, or Aggregation no longer shrinks the graph. The output is a hierarchical community structure, along with which community each node belongs to at each level.
 
 ## The Leiden Algorithm: Patching Louvain's Gap
 
-Louvain has a weakness. Because it optimizes purely for overall modularity, it can produce disconnected communities, groups where nodes get labeled as belonging together even though no path connects them internally. Depending on the order nodes get visited during Local Moving, this happens easily enough, leaving something that doesn't really deserve to be called a community.
+Louvain has a weakness. Because it optimizes purely for overall modularity, it can produce disconnected communities, groups where nodes get labeled as belonging together even though no path connects them internally. Depending on the order nodes get visited during Local Moving, this happens easily enough, leaving something that doesn't deserve to be called a community.
 
 ![](/images/community-detection/image5.png)
 
-The Leiden algorithm targets exactly this problem. It's designed to guarantee that every node inside a community can actually reach every other node in it. It does this by inserting a new phase, Refinement, between Louvain's two existing phases. After Local Moving finds communities, Refinement temporarily resets every node inside each community back to its own individual community. From there, only nodes that are genuinely well-connected to each other get merged back together; disconnected nodes stay on their own. Only after this refinement does the algorithm move on to Aggregation. By cycling through Local Moving, Refinement, and Aggregation, Leiden produces communities that are actually internally connected, at roughly the same computational cost as Louvain.
+The Leiden algorithm targets exactly this problem. It's designed to guarantee that every node inside a community can reach every other node in it. It does this by inserting a new phase, Refinement, between Louvain's two existing phases. After Local Moving finds communities, Refinement temporarily resets every node inside each community back to its own individual community. From there, only nodes that are well-connected to each other get merged back together; disconnected nodes stay on their own. Only after this refinement does the algorithm move on to Aggregation. By cycling through Local Moving, Refinement, and Aggregation, Leiden produces communities that are internally connected, at roughly the same computational cost as Louvain.
 
 ## References
 - [Modularity (networks)](https://en.wikipedia.org/wiki/Modularity_(networks))

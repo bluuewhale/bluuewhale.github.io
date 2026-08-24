@@ -18,7 +18,7 @@ hiddenInSingle = true
 
 ## The Problem
 
-A Netflix service was running short on CPU, so the team scaled its nodes up 3x. Given the CPU-intensive workload, they expected throughput to scale roughly in step. Instead, they got about a 25% improvement, and tail latency actually got worse.
+A Netflix service was running short on CPU, so the team scaled its nodes up 3x. Given the CPU-intensive workload, they expected throughput to scale roughly in step. Instead, they got about a 25% improvement, and tail latency got worse.
 
 ![](/images/debugging-false-sharing/image1.png)
 
@@ -79,7 +79,7 @@ int x __attribute__((aligned(64)));
 int y __attribute__((aligned(64)));
 ```
 
-Where a compiler hint like that isn't an option, you can get the same effect by inserting a dummy buffer between the fields in a struct:
+If a compiler hint like that isn't an option, you can get the same effect by inserting a dummy buffer between the fields in a struct:
 
 ```c
 struct {
@@ -97,7 +97,7 @@ Once the patched JDK shipped, CPU usage dropped back to normal.
 
 ## A True Sharing Problem Underneath
 
-But once the false sharing bottleneck was gone, a true sharing problem surfaced right behind it. Where false sharing comes from unrelated variables that happen to land on the same cache line, true sharing comes from variables that actually are related, being read and written frequently by multiple cores at once. In other words, there was a genuinely hot shared variable underneath.
+But once the false sharing bottleneck was gone, a true sharing problem surfaced right behind it. Where false sharing comes from unrelated variables that happen to land on the same cache line, true sharing comes from variables that are related, with multiple cores reading and writing them frequently at once. In other words, there was a hot shared variable underneath.
 
 This time the culprit was a variable named `super_cache_addr`. Netflix's fix was to stop caching that value entirely.
 
@@ -115,11 +115,11 @@ A typical cache line is 64 bytes. The two variables at fault here, `_secondary_s
 
 ## Questions I Was Left With
 
-Two things in the original post never fully resolved for me, even after reading it through.
+I never fully resolved two things in the original post, even after reading it through.
 
 First, why did MACHINE_CLEAR frequency also climb? The link between false sharing and rising L1 invalidations and CPU stalls is intuitive enough, but the post doesn't make it entirely clear why false sharing would be a direct cause of the hazard behind MACHINE_CLEAR.
 
-Second, why didn't the same problem show up before the CPU upgrade? It makes sense that more physical cores would make false sharing worse, but that implies the same issue, just milder, should have already been present beforehand.
+Second, why didn't the same problem show up before the CPU upgrade? It makes sense that more physical cores would make false sharing worse, but that implies the same issue, only milder, should have already been present beforehand.
 
 ## References
 - [Seeing through hardware counters: a journey to threefold performance increase (Netflix Tech Blog)](https://netflixtechblog.com/seeing-through-hardware-counters-a-journey-to-threefold-performance-increase-2721924a2822)

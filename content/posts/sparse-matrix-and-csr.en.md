@@ -10,7 +10,7 @@ tags = ['Data Structure', 'Linear Algebra', 'Graph', 'CPU']
 categories = ['Data Structures', 'Performance']
 +++
 
-CSR (Compressed Sparse Row) comes up constantly in graph computation and storage optimization. It first appeared in a 1977 Yale University report, the Yale Sparse Matrix Package, which is why it's sometimes called the Yale format. It was designed to store and process sparse matrices efficiently.
+CSR (Compressed Sparse Row) comes up constantly in graph computation and storage optimization. It first appeared in a 1977 Yale University report, the Yale Sparse Matrix Package, which is why it's sometimes called the Yale format. Researchers designed it to store and process sparse matrices efficiently.
 
 ## What a Sparse Matrix Is
 
@@ -54,7 +54,7 @@ Let's redraw the earlier adjacency matrix with distinct values for clarity:
 
 ```bash
        node0  node1  node2  node3
-node0 [  0     A     K     B  ]
+node0 [  0     A     0     B  ]
 node1 [  C     0     D     E  ]
 node2 [  0     F     0     G  ]
 node3 [  H     I     J     0  ]
@@ -92,11 +92,11 @@ The original 4×4 matrix needed 16 cells. CSR needs only values and column info 
 
 ### Sparse Matrix-Vector Multiplication (SpMV)
 
-CSR shines brightest in sparse matrix-vector multiplication, $y = Ax$. Multiplying a dense matrix requires work proportional to its column count times the vector length. Multiplying a CSR-encoded matrix only requires touching the entries that actually hold a value, exactly NNZ of them. Every multiply-and-add against a zero simply never happens.
+CSR shines brightest in sparse matrix-vector multiplication, $y = Ax$. Multiplying a dense matrix requires work proportional to its column count times the vector length. Multiplying a CSR-encoded matrix only requires touching the entries that hold a value, exactly NNZ of them. Every multiply-and-add against a zero never happens.
 
 ### Graph Computation
 
-With `row_pointers` in hand, pulling a node's neighbors is nearly instant: slice `column_indices[row_pointers[n] : row_pointers[n+1]]` and you have them. On top of that, since CSR packs its values into contiguous memory, cache locality is excellent, which keeps CPU cache lines working efficiently. That's exactly why graph operations with frequent neighbor lookups, BFS, ego-net computation, run so much faster on top of CSR. It's also why so many graph processing frameworks adopt CSR as their default storage format.
+With `row_pointers` in hand, pulling a node's neighbors is nearly instant: slice `column_indices[row_pointers[n] : row_pointers[n+1]]` and you have them. On top of that, since CSR packs its values into contiguous memory, cache locality is excellent, which keeps CPU cache lines working efficiently. That's exactly why graph operations with frequent neighbor lookups, like BFS or ego-net computation, run so much faster on top of CSR. It's also why so many graph processing frameworks adopt CSR as their default storage format.
 
 ## Where CSR Falls Short
 

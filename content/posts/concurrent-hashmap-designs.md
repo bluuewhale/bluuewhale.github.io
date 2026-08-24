@@ -90,7 +90,7 @@ In HotSpot, every Java object starts with a small header. Conceptually, it conta
 
 Traditionally, [HotSpot has used this mark word to encode several kinds of runtime metadata](https://wiki.openjdk.org/spaces/HotSpot/pages/11829266/Synchronization)—things like the identity hash code, GC age/marking bits, and, crucially for us, **locking state**.
 
-The diagram below, adapted from [JP Bempel's excellent write-up](https://jpbempel.github.io/2013/03/25/lock-lock-lock-enter.html), shows the rough layout and how those bits get repurposed depending on the state.  The exact lock states and header layout vary across HotSpot versions (for example, biased locking has been removed in recent JDKs); the diagram is provided for intuition, not as a current spec.
+The diagram below, adapted from [JP Bempel's excellent write-up](https://jpbempel.github.io/2013/03/25/lock-lock-lock-enter.html), shows the rough layout and how those bits get repurposed depending on the state. The exact lock states and header layout vary across HotSpot versions (for example, biased locking has been removed in recent JDKs); the diagram is provided for intuition, not as a current spec.
 
 ![markword.png](/images/concurrent-hashmap-designs/markword.png)
 
@@ -334,7 +334,7 @@ pub(crate) fn determine_shard(&self, hash: usize) -> usize {
 
 A common rule of thumb is to size the shard count as a power of two that is comfortably larger than the number of concurrent threads. 
 
-DashMap also picks a fairly aggressive default for the number of shards. It starts from the machine's available parallelism, multiplies it by 4, and then rounds up to the next power of two. This keeps shard selection fast (a simple mask) while intentionally over-sharding a bit to reduce contention under multi-threaded workloads
+DashMap also picks a fairly aggressive default for the number of shards. It starts from the machine's available parallelism, multiplies it by 4, and then rounds up to the next power of two. This keeps shard selection fast (a simple mask) while intentionally over-sharding a bit to reduce contention under multi-threaded workloads.
 
 ```rust
 fn default_shard_amount() -> usize {
@@ -364,7 +364,7 @@ Now consider what a sharded design often looks like: a contiguous array of shard
 
 If those shards are then stored in something like a boxed slice, they end up adjacent in memory, sitting next to each other in a tightly packed layout.
 
-That tight packing can backfire under contention. Lock state tends to be updated very frequently  and those updates can cause **false sharing**: independent shards that happen to live on the same cache line can end up invalidating each other's cache lines, creating unnecessary cache-line bouncing across cores.
+That tight packing can backfire under contention. Lock state tends to be updated very frequently and those updates can cause **false sharing**: independent shards that happen to live on the same cache line can end up invalidating each other's cache lines, creating unnecessary cache-line bouncing across cores.
 
 `CachePadded<T>` is a pragmatic fix for this. It wraps a value and adds enough **padding and alignment** so that it is much more likely to occupy its own cache line, reducing false sharing between neighboring lock states. This doesn't change the algorithm, but it can significantly improve real-world throughput when many threads hammer different shards concurrently.
 
@@ -574,7 +574,7 @@ A couple of subtle design choices are worth noticing here.
 
 First, CHM synchronizes only on the **bin head** (`synchronized (b)`), keeping the locking scope as small as possible. 
 
-Second, it re-checks that the bin head hasn't changed (`tabAt(tab, index) == b`) after acquiring the lock—this is a common pattern in CHM to avoid races where another thread reshapes the bin concurrently. This extra check after acquiring the lock is reminiscent of [**double-checked locking**](https://en.wikipedia.org/wiki/Double-checked_locking#:~:text=In%20software%20engineering%2C%20double%2Dchecked,first%20time%20it%20is%20accessed)
+Second, it re-checks that the bin head hasn't changed (`tabAt(tab, index) == b`) after acquiring the lock—this is a common pattern in CHM to avoid races where another thread reshapes the bin concurrently. This extra check after acquiring the lock is reminiscent of [**double-checked locking**](https://en.wikipedia.org/wiki/Double-checked_locking#:~:text=In%20software%20engineering%2C%20double%2Dchecked,first%20time%20it%20is%20accessed).
 
 Finally, the conversion itself is mechanical: it walks the existing linked list and rebuilds it as a chain of `TreeNode`s, then installs a `TreeBin` wrapper into `table[index]` to represent the new tree-based bin. 
 
@@ -773,7 +773,7 @@ Under heavy `put()` traffic, those cells are actively being modified by other co
 
 That's why CHM avoids the most obvious approach—checking `count >= threshold` on **every** insertion. Instead, it uses a simple heuristic to make the expensive counter read *rare*: **under contention, resizing is only attempted when adding to a bin that already contains two or more nodes** (i.e., when you're inserting into a "collided bin," not an empty/singleton bin).
 
-The comment even quantifies the benefit
+The comment even quantifies the benefit:
 
 > To avoid reading so often, resizing under contention is attempted only upon adding to a bin already holding two or more nodes. Under uniform hash distributions, the probability of this occurring at threshold is around 13%, meaning that only about 1 in 8 puts check threshold (and after resizing, many fewer do so).
 > 
@@ -909,7 +909,7 @@ private final Counter _size;
 private final Counter _slots;
 ```
 
-Importantly, these are implemented as `Counter`s backed by `ConcurrentAutoTable`, which shards updates across multiple internal cells (LongAdder/CounterCell-style) to minimize contention under concurrent increments.
+These are implemented as `Counter`s backed by `ConcurrentAutoTable`, which shards updates across multiple internal cells (LongAdder/CounterCell-style) to minimize contention under concurrent increments.
 
 
 **Resize state**
@@ -1067,7 +1067,7 @@ And the comment explains why:
 - without a volatile read, a thread could observe the key reference in the table but still see an uninitialized key body (publication / reordering)
 - similarly, it wants a happens-before edge before returning a newly inserted value
 
-The important point is not "volatile is slow," but **where** NBHM chooses to pay for it:
+The important point is **where** NBHM chooses to pay for it:
 
 > It pays one volatile read per probe step, because it wants a clean happens-before boundary on the hot path.
 > 
@@ -1310,7 +1310,7 @@ This matters because it directly intersects with SwissTable-style metadata. If y
 
 Global locking, sharding, `ConcurrentHashMap`, and Cliff Click's `NonBlockingHashMap` (NBHM) outline four very different ways to approach concurrency in a hash map. Each draws its contention boundary in a different place, and each pays for that choice with a different mix of simplicity, scalability, and implementation complexity.
 
-The important takeaway is not that one approach is universally better, but that **the shape of the data structure largely determines which concurrency strategies are viable**. Techniques that work well for bucketed, pointer-based maps do not always translate cleanly to open-addressing designs, and vice versa.
+The important takeaway is that **the shape of the data structure largely determines which concurrency strategies are viable**. Techniques that work well for bucketed, pointer-based maps do not always translate cleanly to open-addressing designs, and vice versa.
 
 In the next part, I'll switch gears and look at how these ideas informed the design of **SwissMap**. Rather than re-implementing any one of these strategies wholesale, SwissMap selectively borrows from them—combining sharding, optimistic fast paths, and carefully chosen locking boundaries (while staying mindful of NBHM-style coherence costs) to fit the constraints of a SwissTable-style layout.
 

@@ -29,7 +29,7 @@ But this time, something was different. Rather than diving straight into the dis
 
 The results: across all 8 benchmark scenarios, performance improved between **18% and 29%** over the Part 2 baseline. No single dramatic change — just three smaller, compounding wins that I'm not sure I would have found in the right order on my own.
 
-I'll get to what auto-optimize is and how it came to be. But first, let me walk through what it actually found.
+I'll get to what auto-optimize is and how it came to be. First, though: what it actually found.
 
 ---
 
@@ -41,7 +41,7 @@ I'll get to what auto-optimize is and how it came to be. But first, let me walk 
 
 - 1 prompt. ~3 hours of autonomous profiling, planning, and benchmarking.
 - 5 experiments run. 3 optimizations landed, 2 dropped.
-- 13–32% improvement across all 8 benchmark scenarios vs the Part 2 baseline.
+- 18–29% improvement across all 8 benchmark scenarios vs the Part 2 baseline.
 
 | GetHit | GetMiss |
 |--------|---------|
@@ -59,7 +59,7 @@ I'll get to what auto-optimize is and how it came to be. But first, let me walk 
 
 The baseline is the Part 2 result: the cleaned-up SWAR version with profile pollution fixed.
 
-The benchmark matrix covers 8 scenarios: `{GetHit, GetMiss, PutHit, PutMiss} × {12K, 784K}`. The two sizes stress L1-resident and LLC-resident cases respectively.
+The benchmark matrix covers 8 scenarios: `{GetHit, GetMiss, PutHit, PutMiss} × {12K, 784K}`. The two sizes stress L1-resident and LLC-resident cases, respectively.
 
 | Benchmark | Baseline (ns/op) |
 |-----------|-----------------|
@@ -101,7 +101,7 @@ if (tombstones > 0) {
 
 One benchmark run later, auto-optimize flagged PutHit@784K as regressed by +16.5% and dropped the change.
 
-Here's the thing, though: that drop was probably wrong.
+That drop was probably wrong, though.
 
 Looking at the error bars — PutHit@784K had massive variance across runs, and a single JMH run is not enough to distinguish signal from noise on large-table benchmarks. The change itself is logically sound: it adds exactly one boolean compare per `putValHashed` call. It cannot make things slower.
 
@@ -145,7 +145,7 @@ if (tombstones == 0) {
 }
 ```
 
-There's a second change baked in here, and it's worth unpacking.
+There's a second change baked in here, and it's worth explaining.
 
 Notice that `emptyMask` is now computed *adjacent to* `eqMask`, before the key-equality inner loop. This is **ILP (instruction-level parallelism) hoisting**.
 
@@ -350,7 +350,7 @@ Results:
 
 Both PutHit metrics regressed more than 10% — auto-optimize reverted immediately.
 
-Here's what actually happened. The ILP gain from Experiment 2 — `eqMask` and `emptyBits` computed adjacent, independent, dispatched in parallel — only works when the entire `putValHashed` method is one compilation unit. The moment a method boundary was introduced, two things broke it.
+The ILP gain from Experiment 2 — `eqMask` and `emptyBits` computed adjacent, independent, dispatched in parallel — only works when the entire `putValHashed` method is one compilation unit. The moment a method boundary was introduced, two things broke it.
 
 First: setting up the `putMiss` call required moving 8 arguments into registers. Java's JIT calling convention places arguments in registers, and 8 arguments is enough that some spill to the stack. That register movement competed directly with the slots being used for the ILP operations in the loop.
 
@@ -380,9 +380,9 @@ The next iteration reads that reflexion before it does anything.
 
 Every experiment is a git commit. Every plan, every benchmark result, every reflexion is written to `experiments/` and stays there — whether the change landed or got dropped. The full history is always recoverable.
 
-For the HashSmith experiment, that meant: five iterations, five commits, two dropped changes and three that stuck. The plans that reasoned about tombstone state, multiply port contention, and lazy evaluation — those came from step 2. The drops came from step 4. The connections between experiments came from step 5.
+For the HashSmith experiment, that meant: five iterations, five commits, two dropped changes and three that stuck. The plans that reasoned about tombstone state, multiply port contention, and lazy evaluation came from step 2, the drops from step 4, and the connections between experiments from step 5.
 
-Which raises the obvious question: why does this exist?
+That raises the obvious question: why does this exist?
 
 ---
 
@@ -390,7 +390,7 @@ Which raises the obvious question: why does this exist?
 
 Recently I came across Andrej Karpathy's [autoresearch](https://github.com/karpathy/autoresearch) — a project that closes the hypothesis-experiment-reflection loop so an AI agent can drive an entire research cycle autonomously.
 
-The idea genuinely impressed me. Not just as a technical demo, but as a statement about how AI *should* be used in research: not as a one-shot answer generator, but as a system that compounds knowledge across iterations.
+The idea genuinely impressed me, both as a technical demo and as a statement about how AI *should* be used in research: not as a one-shot answer generator, but as a system that compounds knowledge across iterations.
 
 I'm a performance engineer. My whole job is some variant of: measure → hypothesize → experiment → measure again. I read autoresearch and thought: *this is exactly what I do. And I do it badly.*
 
@@ -404,7 +404,7 @@ The temptation was immediate and I had no interest in resisting it: what would a
 
 Early versions of auto-optimize had no persistent experiment memory. Each experiment started from the profile and the code, with no record of what had already been tried. The agent would profile, see the same bottleneck, and propose the same strategy that was tried (and dropped) two experiments ago — with equally confident reasoning.
 
-This wasn't a model failure. It was a system design failure. The agent had no way to know what it had already learned.
+The failure was in the system design, not the model. The agent had no way to know what it had already learned.
 
 The fix was to make reflexion mandatory and feed it forward. Every experiment now writes a `reflexion.md` — not a summary, but a specific set of lessons: what was surprising, what failed, what to try next. The *next* experiment reads this before it profiles anything. The result is that the agent accumulates experiment-specific knowledge that general-purpose AI simply doesn't have.
 
@@ -412,7 +412,7 @@ The fix was to make reflexion mandatory and feed it forward. Every experiment no
 
 The second failure mode was subtler. The agent would correctly identify a real bottleneck — say, a hot path in the probe loop — and then spend an experiment on a micro-optimization that yielded 2-3%, while a much larger gain was sitting one level up in the call stack, completely unexamined.
 
-It wasn't wrong. It was just... local. It was optimizing what it could *see* in the disassembly, not what it *should* have been looking at given the overall performance budget.
+It was local: optimizing what it could *see* in the disassembly, not what it *should* have been looking at given the overall performance budget.
 
 The fix was to build in a structured reasoning pipeline before any code is touched: Step-Back (what type of bottleneck is this, abstractly?), Chain-of-Thought (enumerate at least 3 strategies with trade-off analysis), Self-Consistency (re-evaluate independently), and Pre-mortem (assume the plan already failed — why?). Together, these force the planner to zoom out before zooming in.
 

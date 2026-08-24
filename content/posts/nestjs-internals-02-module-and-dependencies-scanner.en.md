@@ -19,7 +19,7 @@ NestJS declares a module with the `@Module` decorator. The official docs describ
 
 > A module is a class annotated with a @Module() decorator. The @Module() decorator provides metadata that Nest makes use of to organize the application structure.
 
-Look at the internal implementation of the `@Module` decorator in the NestJS source, and you'll see it simply attaches the data you passed as parameters (`imports` and the rest) onto the target class as metadata.
+Look at the internal implementation of the `@Module` decorator in the NestJS source, and you'll see it attaches the data you passed as parameters (`imports` and the rest) onto the target class as metadata.
 
 ```typescript
 // packages/common/decorators/modules/module.decorator.ts
@@ -137,7 +137,7 @@ export class DependenciesScanner {
 ```
 
 ## DynamicModule
-Beyond `@Module`, NestJS also offers `DynamicModule`, a way to configure a module dynamically at registration time. A deep dive into `DynamicModule` is out of scope for this post, but you can read the full explanation [here](https://docs.nestjs.com/fundamentals/dynamic-modules).
+Beyond `@Module`, NestJS also offers `DynamicModule`, a way to configure a module dynamically at registration time. A full explanation of `DynamicModule` is out of scope for this post, but you can read more [here](https://docs.nestjs.com/fundamentals/dynamic-modules).
 
 ```typescript
 // example of a dynamic module
@@ -160,7 +160,7 @@ export class DatabaseModule {
 }
 ```
 
-Look at how `DynamicModule` is implemented, and you'll see it's really just a way to declare additional dependency metadata on a registered module object. A module registered through `@Module` (let's call it a `StaticModule` from here on) stores its dependency info (`imports`, `controllers`, and so on) as metadata via `Reflect`. A `DynamicModule`, on the other hand, stores extra information as instance properties on top of whatever a `StaticModule` already carries in its metadata. That means registering a `DynamicModule` requires an extra parsing step.
+Look at how `DynamicModule` is implemented, and you'll see it's a way to declare additional dependency metadata on a registered module object. A module registered through `@Module` (let's call it a `StaticModule` from here on) stores its dependency info (`imports`, `controllers`, and so on) as metadata via `Reflect`. A `DynamicModule`, on the other hand, stores extra information as instance properties on top of whatever a `StaticModule` already carries in its metadata. That means registering a `DynamicModule` requires an extra parsing step.
 
 ```typescript
 // packages/common/interfaces/modules/dynamic-module.interface.ts
@@ -190,7 +190,7 @@ export interface ModuleMetadata {
 ```
 
 ## NestContainer
-To see how a `DynamicModule` actually gets registered, let's revisit `NestContainer` from the last post. `NestContainer` is where module data actually lives. Registering a module internally means calling `NestContainer.addModule()`, and `ModuleCompiler` handles parsing the metadata for any dynamically registered module inside it.
+To see how a `DynamicModule` gets registered, let's revisit `NestContainer` from the last post. `NestContainer` is where module data lives. Registering a module internally means calling `NestContainer.addModule()`, and `ModuleCompiler` handles parsing the metadata for any dynamically registered module inside it.
 
 
 ```typescript
@@ -324,4 +324,4 @@ export class NestContainer {
 ```
 
 ## Wrap-up
-This post covered how `StaticModule` and `DynamicModule` metadata gets registered internally. But metadata only describes relationships: module-to-module, or module-to-dependency. Actually performing dependency injection needs something more: creating instances of those dependency objects and managing their lifecycle. Next time, I'll dig into `InstanceLoader` and `Injector`, the two classes responsible for that in NestJS.
+This post covered how `StaticModule` and `DynamicModule` metadata gets registered internally. But metadata only describes relationships: module-to-module, or module-to-dependency. Performing dependency injection needs something more: creating instances of those dependency objects and managing their lifecycle. Next time, I'll dig into `InstanceLoader` and `Injector`, the two classes responsible for that in NestJS.

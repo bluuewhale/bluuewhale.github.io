@@ -61,7 +61,7 @@ endpoints:
 
 When routing service traffic, kube-proxy checks these hints and prefers an endpoint in the same zone.
 
-A few terms are worth pinning down here. The EndpointSlice Controller owns creating and updating EndpointSlices, tracking changes to Service and Pod resources to keep them in sync. An EndpointSlice itself is basically the list of pod IPs a Service points at. It holds one or more endpoints, each carrying a pod IP, related metadata, and the `hints` field mentioned above. kube-proxy subscribes to these EndpointSlices and checks `hints.forZones` to build its routing rules. kube-proxy itself is a daemon running on every worker node, translating a Service's virtual IP and load balancing into an actual network path, typically using kernel networking facilities like iptables. When Topology Aware Hints are present, it builds routing rules that favor same-zone endpoints.
+A few terms are worth pinning down here. The EndpointSlice Controller owns creating and updating EndpointSlices, tracking changes to Service and Pod resources to keep them in sync. An EndpointSlice itself is the list of pod IPs a Service points at. It holds one or more endpoints, each carrying a pod IP, related metadata, and the `hints` field mentioned above. kube-proxy subscribes to these EndpointSlices and checks `hints.forZones` to build its routing rules. kube-proxy itself is a daemon running on every worker node, translating a Service's virtual IP and load balancing into an actual network path, typically using kernel networking facilities like iptables. When Topology Aware Hints are present, it builds routing rules that favor same-zone endpoints.
 
 ### 3. Fallback
 
@@ -69,9 +69,9 @@ If there aren't enough healthy endpoints in the same zone, kube-proxy routes tra
 
 ## How This Relates to the CNI
 
-TAR is closely tied to the CNI. kube-proxy handles distributing traffic from a Service to its pods, building rules that prefer nearby-zone endpoints based on EndpointSlice's TAR hints. The CNI (Container Network Interface), on the other hand, is the plugin responsible for a pod's network interface, IP allocation, and routing, things like Calico, Cilium, Flannel, and Weave Net.
+TAR is closely tied to the CNI. kube-proxy handles distributing traffic from a Service to its pods, building rules that prefer nearby-zone endpoints based on EndpointSlice's TAR hints. The CNI (Container Network Interface), on the other hand, is the plugin responsible for a pod's network interface, IP allocation, and routing. Examples include Calico, Cilium, Flannel, and Weave Net.
 
-Most CNIs (Calico, Flannel, and others) use kube-proxy as-is, so TAR works with them without issue. The exception is a CNI like Cilium, which offers its own mode, kube-proxy replacement. Under that mode, kube-proxy itself never gets involved, since routing runs through Cilium's own algorithm instead, and EndpointSlice hints become meaningless. TAR simply doesn't apply. For what it's worth, EKS's default CNI, the Amazon VPC CNI, is kube-proxy-based, so it supports TAR without any issue.
+Most CNIs (Calico, Flannel, and others) use kube-proxy as-is, so TAR works with them without issue. The exception is a CNI like Cilium, which offers its own mode, kube-proxy replacement. Under that mode, kube-proxy itself never gets involved, since routing runs through Cilium's own algorithm instead, and EndpointSlice hints become meaningless. TAR doesn't apply. For what it's worth, EKS's default CNI, the Amazon VPC CNI, is kube-proxy-based, so it supports TAR without any issue.
 
 ## Turning It On
 
@@ -83,7 +83,7 @@ A handful of conditions can keep TAR from activating, or from working as expecte
 
 If a zone has fewer endpoints than there are zones total, TAR doesn't activate at all. The same happens if endpoint distribution across zones is too lopsided. If even a single node is missing the `topology.kubernetes.io/zone` label, or doesn't report an allocatable CPU metric, TAR won't work, and the same is true if even one endpoint in an EndpointSlice lacks a `hints.forZones` entry.
 
-Environments running a Horizontal Pod Autoscaler (HPA) need extra care. When HPA adds pods, Topology Spread Constraints keep them distributed evenly across zones. But when the Deployment Controller removes pods to scale down, it terminates them randomly, without any regard for zone balance. Repeat that cycle enough times and the imbalance across zones accumulates until TAR eventually turns itself off. [Descheduler](https://github.com/kubernetes-sigs/descheduler) can help work around that drift. And to keep load genuinely balanced from the start, it's worth pairing TAR with [Pod Topology Spread Constraints](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/).
+Environments running a Horizontal Pod Autoscaler (HPA) need extra care. When HPA adds pods, Topology Spread Constraints keep them distributed evenly across zones. But when the Deployment Controller removes pods to scale down, it terminates them randomly, without any regard for zone balance. Repeat that cycle enough times and the imbalance across zones accumulates until TAR eventually turns itself off. [Descheduler](https://github.com/kubernetes-sigs/descheduler) can help work around that drift. And to keep load balanced from the start, it's worth pairing TAR with [Pod Topology Spread Constraints](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/).
 
 ## The Core Requirement: Even Pod Distribution Across AZs
 

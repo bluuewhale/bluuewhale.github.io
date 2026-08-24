@@ -21,7 +21,7 @@ For example:
 - When encountering a quotation mark (`"`), it indicates the start of a string.
 - When encountering a colon (`:`), it indicates that a value is expected next.
 
-Below is a simplified pseudo-code representation of how a scalar parser works
+Below is a simplified pseudo-code representation of how a scalar parser works:
 
 ```
 parse(buf):
@@ -64,12 +64,12 @@ However, when the next instruction is unknown (such as in branch situations), th
 
 To handle this, CPUs perform branch prediction to guess whether a branch will be true or false, and process instructions based on this prediction. If the prediction is correct, instructions are processed quickly. However, if the prediction is wrong, all previous operations are discarded, and the CPU has to restart from the beginning (`IF` stage), leading to performance loss.
 
-Looking at traditional scalar parsers, they contain many branches (e.g., `if` and `switch` statements), and branch prediction failures occur frequently. As a result, the CPU cycles are wasted, causing performance degradation.
+Traditional scalar parsers contain many branches (e.g., `if` and `switch` statements), and branch prediction failures occur frequently. As a result, the CPU cycles are wasted, causing performance degradation.
 
 
 **2. Increased Branching for String Internal/External Determination**
 
-When encountering a quotation mark (`"`), the parser starts and ends the string, but if there is an escape sequence (`\\`), it should not be considered as the end of the string. Additionally, the length of consecutive backslashes (e.g., `\\\\`) changes the validity of `\`".
+When encountering a quotation mark (`"`), the parser starts and ends the string, but if there is an escape sequence (`\\`), it should not be considered as the end of the string. Additionally, the length of consecutive backslashes (e.g., `\\\\`) changes the validity of `\"`.
 
 These escape rules require many branches to be handled.
 
@@ -78,7 +78,7 @@ These escape rules require many branches to be handled.
 Scalar parsers read strings byte by byte. For each byte, actions such as state checking or table lookups are performed. This leads to sporadic memory access patterns, which are highly inefficient in terms of locality. As a result, CPU cache (L1, L2) misses occur frequently.
 
 ## SIMD JSON: What is it?
-SIMD JSON is an algorithm that accelerates JSON parsing by actively utilizing SIMD(Single Instruction, Multiple Data) instructions in modern CPUs. The algorithm was first introduced in the 2019 paper “Parsing Gigabytes of JSON per Second” by Intel engineer Geoff Langdale and Daniel Lemire, a professor at the Universit´e du Qu´ebec.
+SIMD JSON is an algorithm that accelerates JSON parsing by actively utilizing SIMD (Single Instruction, Multiple Data) instructions in modern CPUs. The algorithm was first introduced in the 2019 paper “Parsing Gigabytes of JSON per Second” by Intel engineer Geoff Langdale and Daniel Lemire, a professor at the Université du Québec.
 
 According to the paper, SIMD JSON is about 2 to 5 times faster than traditional scalar parsers for JSON deserialization.
 
@@ -134,19 +134,19 @@ for each vector block:
   extract_indices_from_bitset(S, out_indices)
 ```
 
-First, we divide the data block according to the size of the vector registers. Then, we calculate a mask (`B`) that marks the positions of backslashes in the data block.  Next, we perform the following operations to calculate a mask (`OD`, odd-length ends) that marks positions where consecutive backslashes end with an odd length.
+First, we divide the data block according to the size of the vector registers. Then, we calculate a mask (`B`) that marks the positions of backslashes in the data block. Next, we perform the following operations to calculate a mask (`OD`, odd-length ends) that marks positions where consecutive backslashes end with an odd length.
 
 ![SIMD JSON parsing stage1 ](/images/simd-json/simd-stage0-0.webp)
 
-We then calculate a mask (`Q`) that marks the positions of quotation marks (`"`) in the data block.  We compute the valid (unescaped) quotation mark positions as `Q &= ~OD`.  Afterward, we calculate a mask (`R`) that represents the string range (marked by 1s).
+We then calculate a mask (`Q`) that marks the positions of quotation marks (`"`) in the data block. We compute the valid (unescaped) quotation mark positions as `Q &= ~OD`. Afterward, we calculate a mask (`R`) that represents the string range (marked by 1s).
 
 By performing a cumulative XOR (bitwise XOR for consecutive bits) operation on the valid quotation mark mask (`Q & ~OD`), we can derive the string range mask (`R`).
 
-Using the CUMUL (carry-less multiplication) operation makes the cumulative XOR operation even more efficient. CUMUL, unlike regular multiplication, uses XOR after shifting instead of addition.
+Using the CLMUL (carry-less multiplication) operation makes the cumulative XOR operation even more efficient. CLMUL, unlike regular multiplication, uses XOR after shifting instead of addition.
 
 ![Carryless Multiplication](/images/simd-json/carryless-multiplication.webp)
 
-By applying the CUMUL operation to the mask indicating valid quotation mark positions and the mask where all bits are 1 (`Q &= ~OD`), we can quickly perform a prefix XOR operation (tracking quotation mark openings/closings) to compute the string range mask (`R`).
+By applying the CLMUL operation to the mask indicating valid quotation mark positions and the mask where all bits are 1 (`Q &= ~OD`), we can quickly perform a prefix XOR operation (tracking quotation mark openings/closings) to compute the string range mask (`R`).
 
 ![After CUMUL](/images/simd-json/stage0-after-cumul.webp)
 
@@ -163,7 +163,7 @@ Structural or whitespace characters inside the string are invalid, so we exclude
 We then include the quotation mark mask (`Q`) in the structural string mask:
 - `S = S | Q`
 
-Using the rule that a value token (value) must follow a structural character (`S`) or whitespace (`W`), we create a mask (`P`) for the starting position of the value token.
+Using the rule that a value token must follow a structural character (`S`) or whitespace (`W`), we create a mask (`P`) for the starting position of the value token.
 
 - `P = (S | W) << 1`: This mask identifies the positions following structural characters or whitespace.
 - `P &= ~W & ~R`: Excludes whitespace and positions inside the string.
@@ -182,7 +182,7 @@ Finally, we remove the quotation marks that mark the string boundaries from the 
 
 Through this process, we obtain a bitmask where all the token boundary points are marked with 1s (e.g., `0001000100100000`).
 
-The next step is to convert this bitmask into an index format suitable for the parser (e.g., `[3, 7, 10]`).  To do this, we use the tzcnt (trailing zero count) algorithm. The algorithm finds the index of the lowest bit set to 1 in the bitmask. For example, in the bitmask `00101000`, the lowest bit set to 1 is at index 3. We add this index to the array and remove the least significant bit. This process is repeated.
+The next step is to convert this bitmask into an index format suitable for the parser (e.g., `[3, 7, 10]`). To do this, we use the tzcnt (trailing zero count) algorithm. The algorithm finds the index of the lowest bit set to 1 in the bitmask. For example, in the bitmask `00101000`, the lowest bit set to 1 is at index 3. We add this index to the array and remove the least significant bit. This process is repeated.
 
 Additionally, we apply **loop unrolling** to further optimize the process.
 

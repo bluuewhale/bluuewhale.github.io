@@ -56,7 +56,7 @@ Let's look at two scenarios where this bites.
 
 ### Scenario 1: High Watermark Truncation Followed by Immediate Leader Election
 
-Here, a broker with a stale high watermark suddenly gets elected leader.
+Here, a broker with a stale high watermark gets elected leader.
 
 ![](/images/kafka-kip-101-leader-epoch/image5.png)
 
@@ -65,10 +65,10 @@ Take a partition with two replicas, A and B, where B is the leader.
 1. Follower A, having replicated up through offset 1 (`m2`), sends `FetchRequest(offset=2)` to leader B.
 2. B sees that A is caught up through offset 1, updates its high watermark, and since there's nothing left to replicate, sends back a `FetchResponse` carrying only the updated high watermark.
 3. A restarts before it receives that `FetchResponse`. On restart, it truncates everything after its own (stale) high watermark and sends a fresh `FetchRequest` to B.
-4. B goes down unexpectedly.
+4. B goes down.
 5. Message `m2` is gone.
 
-This scenario doesn't just lose a message. It can produce a phantom read. Until A restarted and became the new leader, `m2` was committed and consumers could read it through B.
+This scenario can also produce a phantom read. Until A restarted and became the new leader, `m2` was committed and consumers could read it through B.
 
 Jun Rao proposed two straightforward fixes:
 
@@ -93,7 +93,7 @@ Assume broker B received the `FetchResponse` for message `m2` but never flushed 
 3. As the new leader, B accepts and writes message `m3` from the producer.
 4. A restarts as a follower.
 
-A and B now hold different messages at the same offset. Follower A has effectively stopped being a valid replica. Worse, once A sends its `FetchRequest`, the replication protocol proceeds as if nothing were wrong. Left unchecked, this can corrupt the topic.
+A and B now hold different messages at the same offset. Follower A is no longer a valid replica. Worse, once A sends its `FetchRequest`, the replication protocol proceeds as if nothing were wrong. Left unchecked, this can corrupt the topic.
 
 ## Leader Epoch
 
@@ -103,7 +103,7 @@ KIP-101 introduces the `leader epoch` to fix both of these.
 
 Think of the leader epoch as a temporary ID for whoever currently leads a partition. It starts at 0 and increments by 1 every time a new leader gets elected. A leader change bumps the epoch, and even if the same broker returns to leadership for the same partition later, it gets a new epoch value rather than reusing the old one.
 
-The controller manages the leader epoch for each partition, persists it in ZooKeeper, and updates it on every new leader election. Newer Kafka versions may not match this diagram exactly internally. Treat it as a reference for the structure as originally proposed.
+The controller manages the leader epoch for each partition, persists it in ZooKeeper, and updates it on every new leader election. The internal structure in newer Kafka versions may not match this diagram exactly. Treat it as a reference for the structure as originally proposed.
 
 Every broker records the leader epoch and the offset at which it started, each time a new leader is elected. Think of it as a key-value log of who led and when they took office. Kafka calls this the `leader epoch sequence`. On restart, a broker uses this sequence instead of the high watermark to decide what to keep.
 
@@ -113,7 +113,7 @@ Let's revisit both scenarios with leader epoch in place.
 
 ### Scenario 1: High Watermark Truncation Followed by Immediate Leader Election
 
-First, the case where an incompletely-updated follower restarts right as the leader also restarts.
+First, this is the case where an incompletely-updated follower restarts right as the leader also restarts.
 
 ![](/images/kafka-kip-101-leader-epoch/image8.png)
 
@@ -121,13 +121,13 @@ First, the case where an incompletely-updated follower restarts right as the lea
 2. On restart, A sends a `LeaderEpochRequest` to the leader and gets back offset 2, its current position.
 3. Since the length of A's local data matches that offset, A keeps its data regardless of what its high watermark says.
 4. Leader B goes down.
-5. A gets elected the new leader and is assigned leader epoch 1, which it records in its leader epoch sequence.
+5. A gets elected the new leader, receives leader epoch 1, and records it in its leader epoch sequence.
 
 The outcome is the same even if B never manages to respond to the `LeaderEpochRequest` before restarting.
 
 ### Scenario 2: Replica Divergence on Restart after Multiple Hard Failures
 
-Now the case where every broker goes down together and an incompletely replicated follower comes back first.
+Now, let's revisit the case where every broker goes down together and an incompletely replicated follower comes back first.
 
 ![](/images/kafka-kip-101-leader-epoch/image9.png)
 

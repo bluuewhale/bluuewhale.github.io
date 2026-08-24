@@ -15,7 +15,7 @@ hiddenInSingle = true
 
 > 이 글은 마이크로소프트 리서치의 논문 [From Local to Global: A GraphRAG Approach to Query-Focused Summarization](https://arxiv.org/pdf/2404.16130)과, 서울대학교 산업공학과 DSBA 연구실의 [\[Paper Review\] GraphRAG](https://www.youtube.com/watch?v=mlsZIThxQcQ) 영상을 참고해 정리한 글입니다.
 
-RAG는 신뢰할 수 있는 문서 집합을 구축해두고, 질문이 들어오면 관련 문서를 찾아 LLM에게 근거로 제공해 답을 생성하게 하는 방식입니다. 인덱싱(문서를 chunking해서 검색 가능한 형태로 저장), Retrieval(질문과 관련된 문서를 탐색), Generator(탐색된 문서와 질문을 바탕으로 답변을 생성)가 기본 구성 요소입니다.
+RAG는 신뢰할 수 있는 문서 집합을 구축해두고, 질문이 들어오면 관련 문서를 찾아 LLM에게 근거로 제공해 답을 생성하게 하는 방식입니다. 인덱싱(문서를 chunking해서 검색 가능한 형태로 저장), Retrieval(질문과 관련된 문서를 탐색), Generation(탐색된 문서와 질문을 바탕으로 답변을 생성)이 기본 구성 요소입니다.
 
 ![](/images/graphrag/image1.png)
 
@@ -75,7 +75,7 @@ GraphRAG는 크게 인덱싱(Indexing)과 쿼리 시점(Query Time) 두 단계�
 
 Query-Focused Summarization 과업의 특성상, 생성된 global sensemaking 질문들에는 정해진 정답(golden standard)이 없습니다. 그래서 논문은 평가 자체도 LLM에 맡깁니다. 먼저 LLM으로 특정 역할(persona)과 그 역할이 수행하고 싶어할 법한 과업을 생성하고, 이를 바탕으로 페르소나별 질문들을 만들어냅니다. 그런 다음 LLM이 채점자가 되어, 답변이 질문의 모든 측면을 얼마나 상세히 다루는지(Comprehensiveness), 서로 다른 관점을 얼마나 풍부하게 담고 있는지(Diversity), 독자가 정보에 기반한 판단을 내리는 데 얼마나 도움이 되는지(Empowerment), 얼마나 간결하고 정확한지(Directness) 네 가지 기준으로 점수를 매깁니다. Comprehensiveness와 Directness는 태생적으로 상충하는 관계에 있는데, 다만 이 네 가지 평가 기준 자체에 대한 명확한 근거나 선행 연구 인용은 논문에서 찾아보기 어려웠습니다.
 
-비교 대상은 세 가지였습니다. GraphRAG의 커뮤니티 탐지 결과를 네 개 레벨(가장 포괄적인 루트 레벨 C0부터 가장 세분화된 C3까지)로 나눠 비교한 것, 커뮤니티 요약 대신 실제 원문 요약을 사용하되 그래프까지는 구축해서 질문 임베딩과 가장 가까운 엔티티를 최대 20개 뽑아 관련 원문을 선택하는 방식(Text Source, TS), 그리고 텍스트 청크를 그대로 벡터화해 질문과 가장 가까운 문서를 찾는 일반적인 RAG였습니다.
+비교 대상은 세 가지였습니다. GraphRAG의 커뮤니티 탐지 결과를 네 개 레벨(가장 포괄적인 루트 레벨 C0부터 가장 세분화된 C3까지)로 나눠 비교한 것, 커뮤니티 요약 대신 실제 원문을 사용하되 그래프까지는 구축해서 질문 임베딩과 가장 가까운 엔티티를 최대 20개 뽑아 관련 원문을 선택하는 방식(Text Source, TS), 그리고 텍스트 청크를 그대로 벡터화해 질문과 가장 가까운 문서를 찾는 일반적인 RAG였습니다.
 
 Podcast(노드 8,564개, 엣지 20,691개)와 News(노드 15,754개, 엣지 19,520개) 두 데이터셋으로 실험한 결과, Comprehensiveness와 Diversity 기준에서는 GraphRAG가 확연히 앞섰습니다. 반대로 Directness 기준에서는 일반 RAG가 근소하게 우세했는데, 이는 GraphRAG가 여러 커뮤니티의 정보를 종합하다 보니 답변이 상대적으로 덜 간결해지는 경향과 맞닿아 있는 것으로 보입니다. Empowerment 기준에서는 두 방식 사이에 큰 차이가 없었습니다.
 
