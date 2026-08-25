@@ -6,6 +6,9 @@ description = 'auto-optimize: autoresearch for performance engineering'
 categories = ['Data Structures', 'Performance']
 tags = ['Hash Table', 'SwissTable', 'Java', 'Performance', 'AI', 'JMH', 'SWAR']
 keywords = ['auto-optimize', 'ILP hoisting', 'SWAR', 'tombstone specialization', 'autonomous optimization']
+
+[build]
+list = 'never'
 +++
 
 **Discussion:** [Reddit (r/java)](https://www.reddit.com/r/java/comments/1scqm1x/hashsmith_part_3_i_automated_my_way_to_a_27/) · [Hacker News](https://news.ycombinator.com/item?id=47645231)
