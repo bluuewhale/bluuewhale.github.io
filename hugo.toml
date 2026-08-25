@@ -6,10 +6,11 @@ defaultContentLanguage = 'en'
 defaultContentLanguageInSubdir = false
 
 [languages]
-  [languages.ko]
-    languageCode = 'ko-kr'
-    languageName = 'Korean'
-    weight = 1
+  # Korean temporarily disabled — uncomment to restore.
+  # [languages.ko]
+  #   languageCode = 'ko-kr'
+  #   languageName = 'Korean'
+  #   weight = 1
   [languages.en]
     languageCode = 'en-us'
     languageName = 'English'
