@@ -5,6 +5,13 @@ theme = 'PaperMod'
 defaultContentLanguage = 'en'
 defaultContentLanguageInSubdir = false
 
+# Korean temporarily disabled — remove to restore.
+# Keeping the [languages.ko] definition (instead of deleting it) matters:
+# Hugo needs it to keep recognizing the ".ko.md" filename suffix as a
+# language marker. Without it, Korean content leaks into the English
+# site as untranslated, oddly-titled duplicate pages.
+disableLanguages = ['ko']
+
 [languages]
   [languages.ko]
     languageCode = 'ko-kr'
