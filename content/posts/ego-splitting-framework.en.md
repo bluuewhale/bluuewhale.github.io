@@ -23,7 +23,7 @@ Real-world networks tend to have plenty of medium-sized communities (roughly 100
 
 Algorithms that attempt overlapping clustering already existed, but most were either too complex, too inflexible, or lacking in theoretical guarantees.
 
-There's a subtler problem too. At the macroscopic level, a single hub node can pull otherwise unrelated groups into one giant community. Picture running community detection on a social network's follow graph. Elon Musk is a businessman, a politician, and a scientist all at once. Cluster around him, and groups that barely overlap in reality (business leaders, politicians, scientists) can end up merged into a single community purely because of his presence.
+There's a subtler problem too. At the level of the whole graph, a single hub node can pull otherwise unrelated groups into one giant community. Picture running community detection on a social network's follow graph. Elon Musk is a businessman, a politician, and a scientist all at once. Cluster around him, and groups that barely overlap in reality (business leaders, politicians, scientists) can end up merged into a single community purely because of his presence.
 
 ## Background: The Ego-Net
 
@@ -37,7 +37,7 @@ The non-overlapping clustering algorithm $A$ the paper works with takes a graph 
 
 ## The Core Idea: Splitting an Ego
 
-The paper's central insight is simple: apply a non-overlapping clustering algorithm at the microscopic level, node by node, and let the result implement overlapping clustering.
+The paper's central insight is simple: apply a non-overlapping clustering algorithm locally, node by node, and use the results to construct overlapping clusters.
 
 ![](/images/ego-splitting-framework/image2.png)
 
@@ -49,7 +49,7 @@ First, compute the ego-net $G[N_u]$ for every node $u$. Then apply a non-overlap
 
 $$A^l(G[N_u]) = \{N^1_u, N^2_u, ..., N^t_u\}, \quad t_u = np(A^l, G[N_u])$$
 
-For each resulting partition, create a copy, a persona, of the original node $u$.
+For each resulting partition, create a copy of the original node $u$, called a persona.
 
 ![](/images/ego-splitting-framework/image3.png)
 
@@ -61,13 +61,13 @@ Now apply a non-overlapping clustering algorithm $A^g$ again, this time to the p
 
 ![](/images/ego-splitting-framework/image4.png)
 
-The whole pipeline: split each node's ego locally into one persona per community it touches, expanding the graph; run ordinary non-overlapping clustering on that expanded graph a second time; then fold the personas back down to their original nodes. This solves overlapping clustering without changing the non-overlapping algorithm at all, using nothing more than wrapping it twice.
+The whole pipeline: split each node's ego locally into one persona per community it touches, expanding the graph; run ordinary non-overlapping clustering on that expanded graph a second time; then fold the personas back down to their original nodes. This produces overlapping clusters by applying non-overlapping clustering at two stages, without changing the underlying algorithm.
 
 ## Why This Matters
 
 The biggest advantage is that it reduces a hard problem, overlapping clustering, to a well-understood one, non-overlapping clustering, using proven algorithms as-is. That comes with real flexibility: any non-overlapping clustering algorithm works as the underlying engine.
 
-The structure also fits large-scale distributed processing environments like MapReduce well. Scalability holds up strongly: a 100x increase in graph size only costs about a 10x increase in runtime.
+The structure also fits large-scale distributed processing environments like MapReduce well. In the reported experiment, a 100x increase in graph size only costs about a 10x increase in runtime.
 
 ![](/images/ego-splitting-framework/image5.png)
 
@@ -81,4 +81,4 @@ and it comes out on top in experiments on real-world graph datasets as well.
 
 ## Wrap-up
 
-The Ego-Splitting Framework is compelling because it doesn't attack a hard problem head-on. It routes around it by wrapping a familiar tool twice. Splitting a node's ego into one persona per community is the entire trick, and it's enough to solve overlapping clustering, a much harder problem, using nothing but well-understood, battle-tested non-overlapping clustering underneath.
+Ego-Splitting reuses non-overlapping clustering to find overlapping communities. Splitting each node into personas lets the framework use familiar clustering algorithms at both the local and global stages.

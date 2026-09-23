@@ -79,7 +79,7 @@ fun main() {
 
 In this example, `MyCoroutine` is a suspendable function. To make a function suspendable, you need to manage execution-related variables (e.g., a program counter) separately. `MyCoroutine` uses a `label` variable to control its flow when suspending.
 
-Explicitly steering execution based on state is the state machine approach. Kotlin coroutines also adopt this state machine model. The example above is a simplified analogy.
+This approach, where the current state determines what runs next, is a state machine. Kotlin coroutines also adopt this state machine model. The example above is a simplified analogy.
 
 ## Suspension point
 
@@ -227,7 +227,7 @@ First question: whether to create a suspension point is decided inside the suspe
 
 Then what is `resumeWith()` for? It’s a callback for external operations that cause CPU idle time (like I/O) to resume a coroutine after completion.
 
-`delay`, one of the most representative suspend functions in the Kotlin standard library, is implemented roughly like this:
+`delay`, a common example of a suspend function in the Kotlin standard library, is implemented roughly like this:
 
 ```kotlin
 suspend fun delay(ms: Long) = suspendCoroutine { continuation ->
@@ -241,7 +241,7 @@ suspend fun delay(ms: Long) = suspendCoroutine { continuation ->
 
 `suspendCoroutine` is provided by the Kotlin standard library. It injects a Continuation into a suspend function and lets you control it via a callback. If `suspendCoroutine` doesn’t explicitly call `Continuation.resumeWith()` inside, that suspend function returns `COROUTINE_SUSPENDED`. In the example above, `Continuation.resumeWith()` is scheduled on a separate thread by a Timer. Thus `delay()` internally returns `COROUTINE_SUSPENDED` and acts as a suspension point.
 
-By extension, you can implement an async file read as a suspend function:
+The same approach lets you implement an async file read as a suspend function:
 
 ```kotlin
 import kotlin.coroutines.*

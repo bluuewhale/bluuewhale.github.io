@@ -33,11 +33,11 @@ hiddenInSingle = true
 ## Background
 LLMs are stateless. As a result, previous inference outputs do not directly affect later outputs.
 
-Because of this property, a plain LLM can fail to maintain continuity in long conversations. In other words, it may look like short-term memory loss, where it cannot remember what was just discussed.
+Without conversation history in its input, a plain LLM cannot recall what was just discussed, making it difficult to maintain continuity across turns.
 
 Researchers addressed this with a straightforward idea: store conversation history between the user and the LLM agent in a separate memory space, then inject relevant history into the prompt at each inference step so the model can sustain continuity.
 
-This approach is intuitive and effective, but it introduces context-length growth. Adding historical exchanges to the prompt makes input length grow.
+This approach is intuitive and effective, but adding past exchanges makes the prompt longer.
 
 Longer prompts cause secondary issues. First, prompt length can exceed the model's hard context limit, making inference impossible.
 
@@ -112,7 +112,7 @@ A memory unit is a context-grounded and reusable representation of dialogue cont
 
 #### Structured indexing
 
-The system stores each memory unit through three complementary index views:
+The system indexes each memory unit in three complementary ways:
 
 ![structured indexing](/images/simple-mem/structured-indexing.png)
 
@@ -126,7 +126,7 @@ This allows the system to handle diverse query patterns (semantic, keyword, and 
 
 Even with filtering, memory can still accumulate excessively over time. To control this, the paper proposes an asynchronous background consolidation process that merges similar memory units.
 
-First, for stored memory units, it computes an affinity score ($w_{ij}$) between two units ($m_i$, $m_j$):
+First, it computes an affinity score ($w_{ij}$) between two stored memory units ($m_i$, $m_j$):
 
 ![affinity score](/images/simple-mem/affinity-score.png)
 
@@ -151,7 +151,7 @@ This idea of merging small episodic memories into a more abstract representation
 
 The final stage retrieves memory units for response generation.
 
-Standard RAG systems usually fetch top-k content at a fixed retrieval depth. This paper points out that the number of units needed varies by query complexity. It therefore proposes a query layer that dynamically adjusts retrieval depth.
+Standard RAG systems usually retrieve the top k results, with k fixed across queries. This paper points out that the number of units needed varies by query complexity. It therefore proposes a query layer that dynamically adjusts retrieval depth.
 
 #### Hybrid Scoring Function
 

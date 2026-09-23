@@ -28,7 +28,7 @@ Digging further, they found CPU load varying wildly across nodes. A small slice,
 
 ## Tracking It Down
 
-The usual tools, JVM profiling, JFR (Java Flight Recorder), JIT compiler analysis, turned up nothing useful. The real clue only showed up once the team dropped a level lower, into CPU metrics and hardware performance counters (PMCs).
+The usual tools—JVM profiling, JFR (Java Flight Recorder), and JIT compiler analysis—turned up nothing useful. The real clue only showed up once the team dropped a level lower, into CPU metrics and hardware performance counters (PMCs).
 
 Slow nodes showed a CPI (cycles per instruction) nearly 3x higher than fast nodes. A CPI spike like that signals frequent CPU stalls. L1 and L3 cache load were also far higher, pointing to coherence-driven cache misses. MACHINE_CLEAR events were firing frequently too.
 
@@ -97,7 +97,7 @@ Once the patched JDK shipped, CPU usage dropped back to normal.
 
 ## A True Sharing Problem Underneath
 
-But once the false sharing bottleneck was gone, a true sharing problem surfaced right behind it. Where false sharing comes from unrelated variables that happen to land on the same cache line, true sharing comes from variables that are related, with multiple cores reading and writing them frequently at once. In other words, there was a hot shared variable underneath.
+Once the false sharing bottleneck was gone, a true sharing problem surfaced. Where false sharing comes from unrelated variables that happen to land on the same cache line, true sharing comes from variables that are related, with multiple cores reading and writing them frequently at once. In other words, there was a hot shared variable underneath.
 
 This time the culprit was a variable named `super_cache_addr`. Netflix's fix was to stop caching that value entirely.
 
@@ -115,7 +115,7 @@ A typical cache line is 64 bytes. The two variables at fault here, `_secondary_s
 
 ## Questions I Was Left With
 
-I never fully resolved two things in the original post, even after reading it through.
+The original post left me with two questions.
 
 First, why did MACHINE_CLEAR frequency also climb? The link between false sharing and rising L1 invalidations and CPU stalls is intuitive enough, but the post doesn't make it entirely clear why false sharing would be a direct cause of the hazard behind MACHINE_CLEAR.
 

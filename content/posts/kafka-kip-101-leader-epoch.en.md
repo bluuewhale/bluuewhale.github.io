@@ -22,7 +22,7 @@ This post walks through [KIP-101 — Alter Replication Protocol to use Leader Ep
 
 ## Log Replication Protocol
 
-Before we get to the leader epoch, let's look at how a partition log replicates from the leader broker to its followers. The exact flow shifts a bit depending on the producer's `ack` setting and `min.isr`, but I want to focus on the core mechanics here.
+Before we get to the leader epoch, let's look at how a partition log replicates from the leader broker to its followers. The exact flow varies depending on the producer's `ack` setting and `min.isr`, but I want to focus on the core mechanics here.
 
 Assume a partition with three replicas. `broker-101` is the leader, and `broker-102` and `broker-103` are followers. `min.isr` is 1.
 
@@ -50,9 +50,9 @@ It reuses the offset already in the `FetchRequest`. If a follower sends a `Fetch
 
 ## Where the High-Watermark Protocol Breaks Down
 
-This design has a few problems. The core one: the leader and its followers update their high watermark at different times. The leader updates it the moment it receives a `FetchRequest`, but a follower only updates its own high watermark once it receives the corresponding `FetchResponse`. That lag can lead to more than a lost message. It can break consistency outright.
+This design has a few problems. The core one: the leader and its followers update their high watermark at different times. The leader updates it the moment it receives a `FetchRequest`, but a follower only updates its own high watermark once it receives the corresponding `FetchResponse`. That lag can cause message loss and consistency problems.
 
-Let's look at two scenarios where this bites.
+Let's look at two scenarios where this causes problems.
 
 ### Scenario 1: High Watermark Truncation Followed by Immediate Leader Election
 
@@ -113,7 +113,7 @@ Let's revisit both scenarios with leader epoch in place.
 
 ### Scenario 1: High Watermark Truncation Followed by Immediate Leader Election
 
-First, this is the case where an incompletely-updated follower restarts right as the leader also restarts.
+First, consider a follower that restarts before updating its high watermark, around the time the leader also restarts.
 
 ![](/images/kafka-kip-101-leader-epoch/image8.png)
 
@@ -139,7 +139,7 @@ Now, let's revisit the case where every broker goes down together and an incompl
 6. A sends a `LeaderEpochRequest` to leader B and gets back epoch 1.
 7. A's local offset is 2, but the new leader's epoch started at offset 1, so A discards everything from offset 1 onward, including `m2`.
 
-With leader-epoch-based recovery, even a full cluster restart in a partially replicated state doesn't produce a consistency break. `m2` is still lost here, but that's a consequence of the `min.isr` setting, not a flaw in the recovery protocol itself.
+With leader-epoch-based recovery, even a full cluster restart in a partially replicated state doesn't leave the replicas inconsistent. `m2` is still lost here, but that's a consequence of the `min.isr` setting, not a flaw in the recovery protocol itself.
 
 ## Wrap-up
 

@@ -16,7 +16,7 @@ Hi everyone. Last time, we covered how NestJS registers metadata for modules and
 ## Dependency Injection in NestJS
 Dependency Injection (DI) is a programming approach where you declare the dependencies between instances up front, and hand off the work of parsing those relationships and creating instances to an IoC container, usually managed by the framework. A full explanation of DI is out of scope here.
 
-Implementing DI well depends on parsing an object graph correctly and coordinating creation order. NestJS supports two styles: constructor-based and property-based. In the example below, `CatController` depends on `CatService`. So building a `CatController` instance requires first building a `CatService` instance and injecting it in. `InstanceLoader` and `Injector` direct and coordinate this process in NestJS.
+Implementing DI well depends on parsing an object graph correctly and coordinating creation order. NestJS supports two styles: constructor-based and property-based. In the example below, `CatController` depends on `CatService`. So creating a `CatController` instance requires first creating a `CatService` instance and injecting it. `InstanceLoader` and `Injector` direct and coordinate this process in NestJS.
 
 ```typescript
 @Controller
@@ -399,11 +399,11 @@ export class Injector {
 }
 ```
 
-From here, actual instance creation through dependency injection begins. Metadata registered via decorators like `@Inject` and `@Optional` comes into play at this stage.
+At this point, the injector starts creating instances and resolving their dependencies. Metadata registered via decorators like `@Inject` and `@Optional` comes into play at this stage.
 
 1. It calls `resolveConstructorParams()`, which parses the dependency info declared in the constructor and fetches the matching objects.
 
-2. Inside `resolveConstructorParams()`, it invokes the `callback` function you passed in. `callback` does the central DI work: it injects the constructor's dependency objects to build the instance, then injects any property-based dependencies on top of that.
+2. Inside `resolveConstructorParams()`, it invokes the `callback` function you passed in. `callback` does the central DI work: it injects the constructor's dependency objects to build the instance, then injects any property-based dependencies.
 
 Once this finishes, instance creation is complete for every dependency object (`Provider`, `Controller`, and so on) registered in `NestContainer`.
 

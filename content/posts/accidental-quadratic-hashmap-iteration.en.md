@@ -20,7 +20,7 @@ Rust's `HashMap` had an interesting bug. The code looks completely ordinary, yet
 
 ## Reproducing the Bug
 
-Look at the code below. It inserts values 1 through 5,000,000 into a first hash map (`one`, that's T1), then iterates over `one` and reinserts every value into a second hash map (`two`, that's T2). Nothing fancy.
+Look at the code below. It inserts values 1 through 5,000,000 into the first hash map (`one`, in T1), then iterates over `one` and reinserts every value into the second hash map (`two`, in T2). Nothing fancy.
 
 ```rust
 use std::collections::hash_set::HashSet;
@@ -71,13 +71,13 @@ The real trouble starts on the second half (indices n through 2n-1). Take `kn`, 
 
 Those slots are already full. The front half of `two` filled up while processing `one`'s first half, and now the second half's elements all want to land in that same crowded region. Collisions spike, and linear probing has to walk the array looking for an empty slot, stretching probe length out to O(n). This extreme clustering keeps going until `two` crosses its load factor and triggers a resize.
 
-Measure the actual latency and you get a graph that matches this story exactly: fast through the first half, a sharp cliff once the second half starts, and a return to speed only after `two` resizes.
+Measure the actual latency and you get a graph that matches this story exactly: fast through the first half, a sharp slowdown once the second half starts, and a recovery only after `two` resizes.
 
 ![](/images/accidental-quadratic-hashmap-iteration/image3.png)
 
 ## Reproducing It Myself
 
-I [built my own open-addressing hash table and ran the experiment](https://github.com/bluuewhale/HashSmith/blob/8ff3a288b547eab6813e8a509f94090e005910b5/src/test/java/io/github/bluuewhale/hashsmith/MapSmokeTest.java#L131), and the same behavior showed up. As the load factor climbs toward 0.9, reinsert time explodes.
+I [built my own open-addressing hash table and ran the experiment](https://github.com/bluuewhale/HashSmith/blob/8ff3a288b547eab6813e8a509f94090e005910b5/src/test/java/io/github/bluuewhale/hashsmith/MapSmokeTest.java#L131), and the same behavior showed up. As the load factor climbs toward 0.9, reinsertion takes much longer.
 
 | entry size | load factor | insert | reinsert |
 |---|---|---|---|

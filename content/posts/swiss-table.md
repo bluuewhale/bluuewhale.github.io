@@ -22,7 +22,7 @@ Swiss Table is a high-performance hash table design introduced by Google enginee
 
 ## Open Addressing, Briefly
 
-An open addressing hash table is one of the implementation methods for hash tables. Unlike separate chaining, which uses external data structures such as linked lists or trees, open addressing implements the entire hash table as a single contiguous array.
+Open addressing is one way to implement a hash table. Unlike separate chaining, which uses external data structures such as linked lists or trees, open addressing implements the entire hash table as a single contiguous array.
 
 In an open addressing hash table, when a hash collision occurs, the algorithm probes other empty slots within the table to find a location where the key can be placed.
 

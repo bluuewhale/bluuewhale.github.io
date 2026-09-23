@@ -19,7 +19,7 @@ NestJS declares a module with the `@Module` decorator. The official docs describ
 
 > A module is a class annotated with a @Module() decorator. The @Module() decorator provides metadata that Nest makes use of to organize the application structure.
 
-Look at the internal implementation of the `@Module` decorator in the NestJS source, and you'll see it attaches the data you passed as parameters (`imports` and the rest) onto the target class as metadata.
+Look at the internal implementation of the `@Module` decorator in the NestJS source, and you'll see it attaches the data you passed as parameters (`imports` and the rest) to the target class as metadata.
 
 ```typescript
 // packages/common/decorators/modules/module.decorator.ts
@@ -324,4 +324,4 @@ export class NestContainer {
 ```
 
 ## Wrap-up
-This post covered how `StaticModule` and `DynamicModule` metadata gets registered internally. But metadata only describes relationships: module-to-module, or module-to-dependency. Performing dependency injection needs something more: creating instances of those dependency objects and managing their lifecycle. Next time, I'll dig into `InstanceLoader` and `Injector`, the two classes responsible for that in NestJS.
+This post covered how `StaticModule` and `DynamicModule` metadata gets registered internally. But metadata only describes relationships: module-to-module, or module-to-dependency. Dependency injection requires another step: creating instances of those dependency objects and managing their lifecycle. Next time, I'll dig into `InstanceLoader` and `Injector`, the two classes responsible for that in NestJS.

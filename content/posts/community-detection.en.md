@@ -15,7 +15,7 @@ image = 'images/community-detection/image1.png'
 hiddenInSingle = true
 +++
 
-Community detection is the problem of finding sets of densely connected nodes, communities, inside a graph. Think of it as a form of clustering. Methods like [GraphRAG](/posts/graphrag-en/) use exactly this technique to break a knowledge graph into manageable pieces. This post covers where modularity, the most widely used metric in community detection, comes from, and how the two algorithms most commonly used to optimize it, Louvain and Leiden, differ.
+Community detection is the problem of finding communities: sets of densely connected nodes within a graph. Think of it as a form of clustering. Methods like [GraphRAG](/posts/graphrag-en/) use exactly this technique to break a knowledge graph into manageable pieces. This post covers where modularity, the most widely used metric in community detection, comes from. It then compares Louvain and Leiden, the two algorithms most commonly used to optimize it.
 
 ![](/images/community-detection/image1.png)
 
@@ -59,7 +59,7 @@ $$
 Q = \frac{1}{2m} \sum_{vw} \left[A_{vw} - \gamma \frac{k_v k_w}{2m}\right] \delta(c_v, c_w)
 $$
 
-Notice $\gamma$ multiplies the null-model term, $\frac{k_v k_w}{2m}$. Shrink it, and the baseline for "how connected this would be by chance" drops. A lower baseline loosens the bar a new node has to clear to increase modularity when added to a community, which lets even relatively weakly connected nodes join the same community. Turning $\gamma$ down pushes the result toward fewer, larger communities.
+Notice $\gamma$ multiplies the null-model term, $\frac{k_v k_w}{2m}$. Shrink it, and the baseline for "how connected this would be by chance" drops. A lower baseline makes it easier for a new node to increase modularity when added to a community, which lets even relatively weakly connected nodes join the same community. Turning $\gamma$ down pushes the result toward fewer, larger communities.
 
 ## The Louvain Algorithm
 
@@ -69,7 +69,7 @@ The algorithm stops under any of three conditions: Local Moving no longer moves 
 
 ## The Leiden Algorithm: Patching Louvain's Gap
 
-Louvain has a weakness. Because it optimizes purely for overall modularity, it can produce disconnected communities, groups where nodes get labeled as belonging together even though no path connects them internally. Depending on the order nodes get visited during Local Moving, this happens easily enough, leaving something that doesn't deserve to be called a community.
+Louvain has a weakness. Because it optimizes purely for overall modularity, it can produce disconnected communities, groups where nodes get labeled as belonging together even though no path connects them internally. This can happen depending on the order in which Local Moving visits the nodes, leaving a community with disconnected parts.
 
 ![](/images/community-detection/image5.png)
 

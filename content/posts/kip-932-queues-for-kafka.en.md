@@ -52,11 +52,11 @@ The **Share Coordinator** manages the persistence of Share-Partition state, writ
 
 ## Share Group Membership
 
-The core protocol behind Share Groups builds on [KIP-848: The Next Generation of the Consumer Rebalance Protocol](/posts/kip-848-next-generation-consumer-rebalance-protocol-en/). Membership is managed by the group coordinator, and consumers signal joining or leaving through heartbeats. Share Groups only support a server-side assignor (`org.apache.kafka.coordinator.group.share.SimpleAssignor`), and since the concept of fencing doesn't exist here at all, rebalancing has a smaller, simpler blast radius than in a traditional consumer group.
+The core protocol behind Share Groups builds on [KIP-848: The Next Generation of the Consumer Rebalance Protocol](/posts/kip-848-next-generation-consumer-rebalance-protocol-en/). Membership is managed by the group coordinator, and consumers signal joining or leaving through heartbeats. Share Groups only support a server-side assignor (`org.apache.kafka.coordinator.group.share.SimpleAssignor`), and since the concept of fencing doesn't exist here at all, rebalancing is simpler and has a more limited impact than in a traditional consumer group.
 
 Rebalancing itself is coordinated by the same three epochs as KIP-848. The Group Epoch increments, triggering a rebalance, whenever a member joins or leaves, a subscription changes, an assignor updates, or partition metadata changes. The Assignment Epoch is the number the group coordinator attaches when it computes a new Target Assignment from the Group Epoch. Each member incrementally converges its Current Assignment toward that Target Assignment, and that progress is reflected in its Member Epoch.
 
-One notable difference: Share Groups have no concept of Static Membership at all.
+One notable difference is that Share Groups have no concept of Static Membership.
 
 ## SimpleAssignor
 
@@ -84,7 +84,7 @@ By default, lifecycle is managed per record, but you can also work in batches to
 
 ## Reading Transactional Records and Exactly-Once
 
-A regular consumer group lets each consumer set its own isolation level. In a Share Group, isolation level can only be set at the group level. And right now, Share Groups don't support exactly-once semantics, though there are signs the direction is being considered.
+A regular consumer group lets each consumer set its own isolation level. In a Share Group, isolation level can only be set at the group level. And right now, Share Groups don't support exactly-once semantics, though support appears to be under consideration.
 
 ![](/images/kip-932-queues-for-kafka/image6.png)
 
@@ -112,7 +112,7 @@ while (true) {
 }
 ```
 
-`KafkaShareConsumer` polls records, acknowledges each one `ACCEPT` or `REJECT` depending on how processing went, then commits the whole batch at once. The shape isn't far from a regular `KafkaConsumer` loop.
+`KafkaShareConsumer` polls records, acknowledges each one `ACCEPT` or `REJECT` depending on how processing went, then commits the whole batch at once. The loop looks much like a regular `KafkaConsumer` loop.
 
 ## Current Status
 

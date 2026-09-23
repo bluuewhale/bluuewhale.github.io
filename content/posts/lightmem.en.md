@@ -17,7 +17,7 @@ hiddenInSingle = true
 
 > This post summarizes [*LightMem: Lightweight and Efficient Memory-Augmented Generation*](https://arxiv.org/abs/2510.18866).
 
-The easiest way to give an LLM agent memory of past conversation is to stuff the whole history back into the prompt every time. That approach falls apart as conversations grow. A long context triggers the "Lost in the Middle" problem, where the model ignores information buried in the middle, and memory systems that re-read the accumulated history on every turn pay for it with higher compute and slower responses. LightMem targets both problems at once. It's a lightweight memory-generation system that cuts token usage to a fraction of what existing systems need, while outperforming them.
+The easiest way to give an LLM agent memory of past conversation is to include the whole history in the prompt every time. That becomes harder to sustain as conversations grow. A long context triggers the "Lost in the Middle" problem, where the model ignores information buried in the middle, and memory systems that re-read the accumulated history on every turn pay for it with higher compute and slower responses. LightMem targets both problems at once. It's a lightweight memory-generation system that cuts token usage to a fraction of what existing systems need, while outperforming them.
 
 ## A Three-Tier Structure Modeled on Human Memory
 
@@ -27,9 +27,9 @@ LightMem's architecture draws on the Atkinson-Shiffrin memory model from 1968. J
 
 ## Sensory Memory: Stripping Out Dead Weight First
 
-The first stage is pre-compression. The goal is simple: strip out unimportant information from a document or conversation as early as possible, cutting down what needs to flow through the rest of the pipeline.
+The first stage is pre-compression. The goal is to remove unimportant information from a document or conversation early, reducing the amount of data the remaining stages need to process.
 
-Compression starts by running the input through LLMLingua-2, token by token. LLMLingua-2 assigns each token a retain probability, a score for how much it's worth keeping, and drops any token scoring below a threshold ($\tau$) without exception. The criterion is information content: LLMLingua-2 keeps tokens with high entropy, the hard-to-predict, information-dense ones, first.
+Compression starts by running the input through LLMLingua-2, token by token. LLMLingua-2 assigns each token a retention probability, a score indicating how useful it is to keep, and drops any token scoring below a threshold ($\tau$) without exception. The criterion is information content: LLMLingua-2 keeps tokens with high entropy, the hard-to-predict, information-dense ones, first.
 
 ![](/images/lightmem/image2.png)
 
@@ -65,13 +65,13 @@ Once the buffer hits its size threshold, an LLM call summarizes its contents. Li
 
 ## Long-Term Memory: Add Immediately, Clean Up Later
 
-Long-term memory runs on two different rhythms.
+Long-term memory uses two update methods, each running at a different time.
 
 **Soft update** happens during real-time interaction with the user (test-time). LightMem appends new information immediately, without overwriting or deleting anything already there. That temporarily tolerates duplicates, but it avoids response latency entirely. Compare that to the replace approach most existing systems use, which forces extra computation on every update and pays for it in delay.
 
-**Sleep-time offline update** runs during idle time, when the model isn't actively serving inference. This is when LightMem performs parallel consolidation across everything stored in long-term memory: sorting all memories chronologically, then using similarity search to find and merge entries that are semantically redundant or contradictory. LightMem only overwrites an existing entry if the new one carries a more recent timestamp, which keeps stale information from clobbering something newer.
+**Sleep-time offline update** runs during idle time, when the model isn't actively serving inference. This is when LightMem performs parallel consolidation across everything stored in long-term memory: sorting all memories chronologically, then using similarity search to find and merge entries that are semantically redundant or contradictory. LightMem only overwrites an existing entry if the new one carries a more recent timestamp, which prevents older information from overwriting newer information.
 
-Appending immediately to kill latency, then batching cleanup into idle time: that combination is what lets LightMem hold onto both response speed and memory quality at once.
+By appending during interaction and consolidating during idle time, LightMem aims to keep responses fast while maintaining memory quality.
 
 ## Experiments
 
@@ -79,7 +79,7 @@ LightMem was evaluated under Incremental Dialogue Turn Feeding, an environment t
 
 ![](/images/lightmem/image6.png)
 
-Under identical model conditions, LightMem outperformed every comparison system while using a fraction, in some cases a few percent, of their token budget. Latency came out far ahead as well.
+Under identical model conditions, LightMem outperformed every comparison system while using a fraction, in some cases a few percent, of their token budget. Response latency was also lower.
 
 ### How the Retention Ratio Affects Performance
 
