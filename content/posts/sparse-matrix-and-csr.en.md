@@ -14,7 +14,7 @@ CSR (Compressed Sparse Row) comes up constantly in graph computation and storage
 
 ## What a Sparse Matrix Is
 
-A sparse matrix is one where most of the entries are zero. You run into them across nearly every corner of modern computing: scientific computing, graph theory, machine learning. Real-world data, once you cast it as a matrix, almost always ends up looking like this. Take a social network: even with a million users, any given person typically has around 500 friends. Representing that directly as a matrix would require something on the order of 10^12 entries, roughly 7.3 petabytes. Storage cost balloons far beyond the actual information the matrix carries.
+A sparse matrix is one where most of the entries are zero. Such matrices appear in scientific computing, graph theory, and machine learning. Real-world data, once you cast it as a matrix, almost always ends up looking like this. Take a social network: even with a million users, any given person typically has around 500 friends. Representing that directly as a matrix would require something on the order of 10^12 entries, roughly 7.3 petabytes. Storing all those zero entries takes space without adding useful information.
 
 The adjacency matrix is a classic example of this. It represents the connections between nodes in a graph, and a simple example makes the pattern obvious:
 
@@ -92,7 +92,7 @@ The original 4×4 matrix needed 16 cells. CSR needs only values and column info 
 
 ### Sparse Matrix-Vector Multiplication (SpMV)
 
-CSR shines brightest in sparse matrix-vector multiplication, $y = Ax$. Multiplying a dense matrix requires work proportional to its column count times the vector length. Multiplying a CSR-encoded matrix only requires touching the entries that hold a value, exactly NNZ of them. Every multiply-and-add against a zero never happens.
+CSR is particularly useful for sparse matrix-vector multiplication, $y = Ax$. Multiplying a dense matrix requires work proportional to its column count times the vector length. Multiplying a CSR-encoded matrix only requires touching the entries that hold a value, exactly NNZ of them. It skips multiply-and-add operations involving zero entries.
 
 ### Graph Computation
 
@@ -100,4 +100,4 @@ With `row_pointers` in hand, pulling a node's neighbors is nearly instant: slice
 
 ## Where CSR Falls Short
 
-Nothing comes free, though. Because CSR is array-based, it resists modification. Adding a single new edge between two nodes means inserting a value into the middle of `values` and `column_indices`, and an array insertion like that has to shift every following element over by one, an expensive operation. That makes CSR a strong fit for read-heavy workloads where the underlying graph or matrix doesn't change often, and a weaker one where it does.
+CSR has a trade-off, though: its array-based layout is expensive to modify. Adding a single new edge between two nodes means inserting a value into the middle of `values` and `column_indices`, and an array insertion like that has to shift every following element over by one, an expensive operation. That makes CSR a strong fit for read-heavy workloads where the underlying graph or matrix doesn't change often, and a weaker one where it does.

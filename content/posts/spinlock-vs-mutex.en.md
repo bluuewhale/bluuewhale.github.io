@@ -18,13 +18,13 @@ Locks split into two broad families: spinlocks, which run entirely in userspace 
 
 ## Spinlock
 
-A spinlock lives entirely in userspace. The mechanism is simple: loop forever until a CAS (Compare-And-Swap) succeeds.
+A spinlock lives entirely in userspace. The mechanism is simple: keep looping until a CAS (Compare-And-Swap) succeeds.
 
 ```c
 while (!CAS(lock, 0, 1))
 ```
 
-Most CPUs ship a dedicated instruction for this. On x86 it's `LOCK CMPXCHG`. The catch is that a CAS only succeeds once the core holds exclusive write access to that cache line. Getting there pulls the cache coherence protocol into play, and passing ownership of a cache line back and forth triggers frequent invalidation, what people call cache line bouncing. That round trip usually costs somewhere between 4 and 80 nanoseconds.
+Most CPUs ship a dedicated instruction for this. On x86 it's `LOCK CMPXCHG`. The catch is that a CAS only succeeds once the core holds exclusive write access to that cache line. Acquiring that access involves the cache coherence protocol, and passing ownership of a cache line back and forth triggers frequent invalidation, what people call cache line bouncing. That round trip usually costs somewhere between 4 and 80 nanoseconds.
 
 A cache line is the smallest unit a CPU cache moves and keeps coherent. Most modern CPUs use 64-byte lines, so reading even a single 8-byte value pulls in the full 64 bytes around it. That design pays off for spatial locality, but it also means two unrelated variables that happen to share a cache line can trigger false sharing.
 
@@ -34,9 +34,9 @@ Because the whole thing runs in userspace, a spinlock never triggers a system ca
 
 ## Mutex
 
-A mutex spans both userspace and kernel space. Most modern kernels implement it as a two-tier structure. Under no contention, it takes the same fast path as a spinlock, grabbing the lock with a single CAS. When that fails, it falls to the slow path: a system call, `futex(FUTEX_WAIT)`, that parks the thread.
+A mutex spans both userspace and kernel space. Most modern kernels implement it as a two-tier structure. Under no contention, it takes the same fast path as a spinlock, grabbing the lock with a single CAS. When that fails, it takes the slow path: a system call, `futex(FUTEX_WAIT)`, that parks the thread.
 
-Under no contention, a mutex is just as fast as a spinlock, one CAS and done. Under contention, it avoids wasting CPU by context-switching the thread out, but that protection isn't free. The system call alone costs around 500ns, and the context switch itself runs 3 to 5μs.
+Without contention, a mutex is just as fast as a spinlock, one CAS and done. Under contention, it avoids wasting CPU by context-switching the thread out, but that protection isn't free. The system call alone costs around 500ns, and the context switch itself runs 3 to 5μs.
 
 ## Spinlock vs Mutex
 

@@ -24,7 +24,7 @@ SIMA isn't a bot tuned for one specific game, and that's what makes it interesti
 
 SIMA's most distinctive trait is that its inputs and outputs match a human's exactly. It takes in the game screen (raw pixels) plus a spoken or typed instruction, and it outputs keyboard and mouse actions. Unlike a typical game bot that calls into the engine's internal API, SIMA plays through the same interface a person uses: watching a screen and operating a keyboard and mouse. That's why the researchers call it a versatile agent, one that adapts quickly to environments it hasn't seen.
 
-The instructions used during training were relatively short, completable in under 10 seconds: things like "open the map" or "climb the ladder."
+The training instructions described short tasks that could be completed in under 10 seconds: things like "open the map" or "climb the ladder."
 
 ## Training with Behavior Cloning
 
@@ -46,7 +46,7 @@ The larger 𝜆 gets, the more the language instruction influences the predicted
 
 ## Evaluation
 
-Measured on how well SIMA follows a natural-language instruction once it's given, success rates land in the 50-65% range overall.
+When evaluated on following natural-language instructions, SIMA achieved overall success rates in the 50-65% range.
 
 ![](/images/sima-generalist-ai-agent-3d-environments/image2.png)
 
@@ -54,7 +54,7 @@ The gap between command types is fairly stark. SIMA handles movement-related com
 
 ![](/images/sima-generalist-ai-agent-3d-environments/image3.png)
 
-Compared directly against expert human players on No Man's Sky, SIMA hit a 34% success rate versus the experts' 60%. It's not at human level yet, but SIMA performed reasonably well even in zero-shot conditions, playing that game for the first time. That reads less like memorized game-specific rules and more like evidence SIMA has learned something generalizable about how to play games at all.
+Compared directly against expert human players on No Man's Sky, SIMA hit a 34% success rate versus the experts' 60%. It's not at human level yet, but SIMA performed reasonably well even in zero-shot conditions, playing that game for the first time. That suggests SIMA learned skills that transfer between games, rather than only memorizing game-specific rules.
 
 ![](/images/sima-generalist-ai-agent-3d-environments/image4.png)
 

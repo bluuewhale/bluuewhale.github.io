@@ -61,7 +61,7 @@ endpoints:
 
 When routing service traffic, kube-proxy checks these hints and prefers an endpoint in the same zone.
 
-A few terms are worth pinning down here. The EndpointSlice Controller owns creating and updating EndpointSlices, tracking changes to Service and Pod resources to keep them in sync. An EndpointSlice itself is the list of pod IPs a Service points at. It holds one or more endpoints, each carrying a pod IP, related metadata, and the `hints` field mentioned above. kube-proxy subscribes to these EndpointSlices and checks `hints.forZones` to build its routing rules. kube-proxy itself is a daemon running on every worker node, translating a Service's virtual IP and load balancing into an actual network path, typically using kernel networking facilities like iptables. When Topology Aware Hints are present, it builds routing rules that favor same-zone endpoints.
+A few terms need explaining here. The EndpointSlice Controller creates and updates EndpointSlices, tracking changes to Service and Pod resources to keep them in sync. An EndpointSlice itself is the list of pod IPs a Service points at. It holds one or more endpoints, each carrying a pod IP, related metadata, and the `hints` field mentioned above. kube-proxy subscribes to these EndpointSlices and checks `hints.forZones` to build its routing rules. kube-proxy itself is a daemon running on every worker node, translating a Service's virtual IP and load balancing into an actual network path, typically using kernel networking facilities like iptables. When Topology Aware Hints are present, it builds routing rules that favor same-zone endpoints.
 
 ### 3. Fallback
 
@@ -71,7 +71,7 @@ If there aren't enough healthy endpoints in the same zone, kube-proxy routes tra
 
 TAR is closely tied to the CNI. kube-proxy handles distributing traffic from a Service to its pods, building rules that prefer nearby-zone endpoints based on EndpointSlice's TAR hints. The CNI (Container Network Interface), on the other hand, is the plugin responsible for a pod's network interface, IP allocation, and routing. Examples include Calico, Cilium, Flannel, and Weave Net.
 
-Most CNIs (Calico, Flannel, and others) use kube-proxy as-is, so TAR works with them without issue. The exception is a CNI like Cilium, which offers its own mode, kube-proxy replacement. Under that mode, kube-proxy itself never gets involved, since routing runs through Cilium's own algorithm instead, and EndpointSlice hints become meaningless. TAR doesn't apply. For what it's worth, EKS's default CNI, the Amazon VPC CNI, is kube-proxy-based, so it supports TAR without any issue.
+Most CNIs (Calico, Flannel, and others) use kube-proxy as-is, so TAR works with them without issue. The exception is a CNI like Cilium, which offers its own mode, kube-proxy replacement. Under that mode, kube-proxy itself never gets involved, since routing runs through Cilium's own algorithm instead, and EndpointSlice hints become meaningless. TAR doesn't apply. EKS's default CNI, the Amazon VPC CNI, is kube-proxy-based, so it supports TAR without any issue.
 
 ## Turning It On
 
@@ -87,7 +87,7 @@ Environments running a Horizontal Pod Autoscaler (HPA) need extra care. When HPA
 
 ## The Core Requirement: Even Pod Distribution Across AZs
 
-The condition that matters most is that pods need to be spread evenly across every AZ. The minimum pod count required per AZ is computed as:
+The main requirement is an even distribution of pods across AZs. The minimum pod count required per AZ is computed as:
 
 ```
 total pod count * (that zone's CPU ratio) * (1/1.2)

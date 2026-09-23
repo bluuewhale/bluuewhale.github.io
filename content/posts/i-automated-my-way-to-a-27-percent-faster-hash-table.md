@@ -28,7 +28,7 @@ At the end of the last post, I had a SwissMap that felt genuinely fast: the `Obj
 
 Naturally, that meant I immediately started staring at the profiler again.
 
-But this time, something was different. Rather than diving straight into the disassembly myself, I let a tool I'd been building run the experiment. The tool is called **[auto-optimize](https://github.com/bluuewhale/auto-optimize)** — a Claude Code plugin that closes the loop between profiling, planning, and measurement, autonomously.
+This time, I let a tool I'd been building run the experiment instead of going straight to the disassembly myself. The tool is called **[auto-optimize](https://github.com/bluuewhale/auto-optimize)** — a Claude Code plugin that closes the loop between profiling, planning, and measurement, autonomously.
 
 The results: across all 8 benchmark scenarios, performance improved between **18% and 29%** over the Part 2 baseline. No single dramatic change — just three smaller, compounding wins that I'm not sure I would have found in the right order on my own.
 
@@ -106,11 +106,11 @@ One benchmark run later, auto-optimize flagged PutHit@784K as regressed by +16.5
 
 That drop was probably wrong, though.
 
-Looking at the error bars — PutHit@784K had massive variance across runs, and a single JMH run is not enough to distinguish signal from noise on large-table benchmarks. The change itself is logically sound: it adds exactly one boolean compare per `putValHashed` call. It cannot make things slower.
+The error bars showed large variance across PutHit@784K runs, and a single JMH run is not enough to distinguish signal from noise on large-table benchmarks. The change itself is logically sound: it adds exactly one boolean compare per `putValHashed` call. It cannot make things slower.
 
 But auto-optimize applied its own rule: *if any metric regresses more than 10%, drop it*. And it did.
 
-This is worth sitting with for a second. The agent made a defensible decision under the measurement constraints it had. The lesson wasn't "the tool failed" — it was "a single JMH run is not enough to establish ground truth." The tombstone idea came back in Experiment 2, this time with a more thorough treatment.
+The agent made a defensible decision under the measurement constraints it had. The lesson wasn't "the tool failed" — it was "a single JMH run is not enough to establish ground truth." The tombstone idea came back in Experiment 2, this time with a more thorough treatment.
 
 ---
 
@@ -444,9 +444,9 @@ claude plugin marketplace add bluuewhale/auto-optimize
 claude plugin install auto-optimize@auto-optimize
 ```
 
-Then: `/auto-optimize`. Give it a goal, a benchmark command, and a success threshold. It takes it from there.
+Then run `/auto-optimize` with a goal, a benchmark command, and a success threshold.
 
-If you want to follow along with the HashSmith experiments — or try auto-optimize on your own codebase — I'd genuinely love to hear what happens. The [experiment logs](https://github.com/bluuewhale/hash-smith/tree/feat/optimization/experiments) are all public.
+If you want to follow along with the HashSmith experiments — or try auto-optimize on your own codebase — I'd love to hear what happens. The [experiment logs](https://github.com/bluuewhale/hash-smith/tree/feat/optimization/experiments) are all public.
 
 The code, the plans, the dropped experiments, the noise-dominated runs that got dropped for the wrong reasons — all of it is there.
 

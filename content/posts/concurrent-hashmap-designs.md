@@ -451,7 +451,7 @@ Viewed from a high level, CHM is effectively applying **sharding at the data lev
 
 ### How `ConcurrentHashMap.put()` Works
 
-`ConcurrentHashMap.put()` is built around a simple idea: try to finish the operation with a cheap, CAS step first, and only if that fails, fall back to locking—and even then, lock as little as possible.
+`ConcurrentHashMap.put()` is built around a simple idea: try to finish the operation with a cheap CAS step first, and only if that fails, fall back to locking—and even then, lock as little as possible.
 
 It starts by hashing the key and computing the target bin index using a power-of-two mask (`(n - 1) & hash`). If the corresponding slot in the table is empty, `put()` takes the fastest route: it attempts to install the first `Node` into that bin with a single CAS. When this succeeds, the insertion completes without taking any locks at all.
 
@@ -844,7 +844,7 @@ So far we've covered three concurrency strategies:
 
 Cliff Click's `NonBlockingHashMap` (NBHM) explores a fourth point in the design space: an **open-addressed hash table** where updates are coordinated via **CAS-based slot claiming**, and resizing is handled by **cooperative copying** rather than a stop-the-world phase.
 
-The class header doesn't hide its ambition: it explicitly positions itself as a lock-free alternative to `ConcurrentHashMap`, emphasizing non-blocking updates and scalability under high update rates. In fact, the comment is *extremely* confident about scalability, claiming linear scaling "up to 768 CPUs on a 768-CPU Azul box," even under 100% updates or 100% reads.
+The class header describes NBHM as a lock-free alternative to `ConcurrentHashMap`, emphasizing non-blocking updates and scalability under high update rates. The comment claims linear scaling "up to 768 CPUs on a 768-CPU Azul box," even under 100% updates or 100% reads.
 
 I'm not treating these numbers as gospel—they depend heavily on workload, JVM, and hardware—but the claim is still a useful signal. NBHM was designed with **high update throughput at large core counts** as a first-class goal, not as an afterthought.
 
@@ -857,7 +857,7 @@ NBHM's main table state lives in a single `Object[]` called `_kvs`.
 private transient Object[] _kvs;
 ```
 
-And yes—replacement really means replacement: `_kvs` can be swapped as a single atomic operation via Unsafe:
+The `_kvs` reference can be swapped in a single atomic operation via Unsafe:
 
 ```java
 private final boolean CAS_kvs( final Object[] oldkvs, final Object[] newkvs ) {
@@ -865,7 +865,7 @@ private final boolean CAS_kvs( final Object[] oldkvs, final Object[] newkvs ) {
 }
 ```
 
-The layout inside `_kvs` is also very data-oriented:
+The layout inside `_kvs` is:
 
 - `kvs[0]` holds a control structure `CHM`
 - `kvs[1]` holds `int[] hashes` (memoized full hashes)
@@ -1148,7 +1148,7 @@ This is the key lock-free move:
 - key slots "become used" via `_slots`
 - the full hash is memoized
 
-And then there's an extremely important comment about Java CAS:
+Another comment explains a constraint of Java CAS:
 
 > Java CAS returns only a boolean, so on failure you don't get the "witness" value that caused it to fail. Re-reading cannot reliably recover the witness because another thread might change the slot again. So NBHM avoids "apparent spurious failure" by **not allowing keys to ever change**.
 > 
@@ -1268,7 +1268,7 @@ The algorithm is:
 1. **prevent fresh updates in the old table** by forcing empty keys to `TOMBSTONE` (minor optimization)
 2. **box the old value** into `Prime(oldVal)` so nobody can update it in-place
 3. copy the unboxed value into the new table, but only if it was `null` there
-4. slam the old value down to `TOMBPRIME` so others stop trying to copy it
+4. set the old value to `TOMBPRIME` so others stop trying to copy it
 
 ```java
 Object oldval = val(oldkvs,idx);

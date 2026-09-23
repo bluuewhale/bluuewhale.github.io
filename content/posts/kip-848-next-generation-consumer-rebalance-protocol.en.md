@@ -18,13 +18,13 @@ The consumer group rebalancing protocol had been around for eight years, and it 
 
 The biggest one was a thick-client design that put too much responsibility on the client. When a bug showed up in consumer group rebalancing, fixing it meant fixing the client, and if you're running a cloud service, you can't force your users to patch their own clients. Since most of the logic ran on the client side, diagnosing problems from server-side logs alone was often impossible.
 
-The second problem: a single member's change, joining, leaving, or failing, triggered a rebalance for the entire group. Cooperative rebalancing had already improved on this, but only so much. A rebalance in progress blocked offset commits entirely, stalling processing in some applications outright.
+The second problem was that a single member joining, leaving, or failing triggered a rebalance for the entire group. Cooperative rebalancing had already improved on this, but only so much. A rebalance in progress blocked offset commits entirely, stalling processing in some applications outright.
 
 A series of KIPs had chipped away at these problems incrementally, but that accumulated complexity, and it became clear the protocol needed a coherent redesign rather than another patch.
 
 ## Design Goals
 
-KIP-848's target is specific. Build a genuinely incremental, cooperative structure where a change to the member list doesn't affect every consumer, only the members whose actual partition assignments change. Move most of the rebalancing complexity out of the client and into the broker's group coordinator, so bugs can be fixed without a client upgrade and operators can diagnose issues from broker logs alone. At the same time, keep supporting cases like Kafka Streams, where client-side assignor logic is a hard requirement. Migration to the new protocol needs to be incremental, and the design has to guarantee at-least-once, with exactly-once available conditionally.
+KIP-848 aims for incremental, cooperative rebalancing: a change to the member list should affect only the consumers whose partition assignments change. It also moves most of the rebalancing complexity out of the client and into the broker's group coordinator, so bugs can be fixed without a client upgrade and operators can diagnose issues from broker logs alone. At the same time, the design needs to support cases like Kafka Streams, where client-side assignor logic is a hard requirement. Migration to the new protocol needs to be incremental, and the design has to guarantee at-least-once, with exactly-once available conditionally.
 
 ## What Actually Changed
 
@@ -34,11 +34,11 @@ The most fundamental shift is in how assignment itself works. The group coordina
 
 ### An Event Loop in the Group Coordinator
 
-The group coordinator gets an event loop. The reason for adopting it is straightforward: it makes concurrency, handling many requests arriving at once, much simpler to reason about.
+The group coordinator gets an event loop. This makes it easier to reason about concurrent requests arriving at the coordinator.
 
 ### Coordinating Rebalances with Epochs
 
-The real core of the new protocol is three kinds of epochs.
+The new protocol coordinates rebalancing through three kinds of epochs.
 
 The Group Epoch is a version number for the group's current metadata. It increments, and triggers a rebalance, whenever a member joins or leaves, a subscription changes, an assignor-related update happens, or partition metadata changes (a new topic, a change in partition count, and so on). Once the Group Epoch exceeds the Assignment Epoch, the group coordinator computes a new Target Assignment from the latest group metadata. That involves an Assignor Selection step to pick which assignor to use. Server-side options include range, which assigns matching partition numbers across topics, and uniform, which assigns partitions randomly; both default to sticky behavior that minimizes partition churn. A client-side assignor behaves much like the old client-driven rebalancing protocol.
 

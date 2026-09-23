@@ -30,7 +30,7 @@ That gap shows up clearly in query-focused summarization. Questions like "what's
 
 ## Background: Knowledge Graphs
 
-A knowledge graph represents a knowledge base, triplets describing what kind of thing two objects are and how they relate, as a graph.
+A knowledge graph represents entities and their relationships as a graph. These relationships can be expressed as triplets in a knowledge base.
 
 ![](/images/graphrag/image3.png)
 
@@ -42,7 +42,7 @@ The practical way to build a knowledge graph is to feed documents to an LLM and 
 
 ## Background: Community Detection
 
-Once you have a knowledge graph, you need community detection, finding sets of densely connected nodes within it. The underlying assumption is simple: similar nodes tend to cluster together, a kind of birds-of-a-feather effect. Modularity measures how well that assumption holds, rising as connections stay dense within a community and sparse across community boundaries.
+Once you have a knowledge graph, community detection finds sets of densely connected nodes within it. The underlying assumption is simple: similar nodes tend to cluster together, a kind of birds-of-a-feather effect. Modularity measures how well that assumption holds, rising as connections stay dense within a community and sparse across community boundaries.
 
 The most widely used method is the Louvain algorithm, proposed in 2008. It alternates between two phases: Local Moving, which shifts each node into whichever community maximizes modularity, and Aggregation, which collapses the communities found so far into single nodes to form a new graph. It stops once no node moves, overall modularity stops increasing, or the graph stops shrinking, producing a hierarchical community structure as its output.
 
@@ -58,7 +58,7 @@ One more background concept worth pinning down is sensemaking: the sustained eff
 
 ![](/images/graphrag/image6.png)
 
-GraphRAG splits into two phases: indexing and query time. During indexing, documents get chunked, entities and relationships get extracted from each chunk to build a knowledge graph, communities get detected in that graph, and a summary gets pre-generated for each community. At query time, each community summary produces its own local answer, and those get synthesized into a final global answer.
+GraphRAG splits into two phases: indexing and query time. During indexing, GraphRAG splits documents into chunks and extracts entities and relationships to build a knowledge graph. It then detects communities in that graph and generates a summary for each one. At query time, it uses these summaries to produce local answers, which it combines into a final global answer.
 
 A few implementation details stand out. Larger chunk sizes tend to yield fewer extracted entities, likely because longer chunks introduce more duplicate entities and compress relationships into vaguer summaries. Entity and relationship extraction itself runs through an LLM prompt that includes few-shot examples, alongside claim extraction, which pulls out important facts about an entity: dates, events, interactions with other entities. This process also uses self-reflection, prompting the LLM to review its own output and regenerate if needed, which the authors found let them use larger chunks (cutting the number of LLM calls) while still increasing the number of entities detected.
 
@@ -74,7 +74,7 @@ At query time, these pre-built community summaries get shuffled and re-chunked t
 
 ## Evaluation: LLM-as-a-Judge
 
-Given the nature of query-focused summarization, the global sensemaking questions used for evaluation have no golden-standard answer. So the paper hands evaluation itself to an LLM. It first generates a persona and a task that persona would plausibly want to accomplish, then generates questions for each persona based on that. An LLM then acts as judge, scoring answers on four criteria: comprehensiveness (how thoroughly the answer covers every aspect and detail of the question), diversity (how rich and varied the perspectives it offers are), empowerment (how much it helps the reader make an informed judgment on the topic), and directness (how concise and precise it is). Comprehensiveness and directness are naturally in tension with each other, though the paper doesn't offer much justification or prior work backing this particular set of four criteria.
+Given the nature of query-focused summarization, the global sensemaking questions used for evaluation have no gold-standard answer. The authors therefore use an LLM for evaluation. It first generates a persona and a task that persona would plausibly want to accomplish, then generates questions for each persona based on that. An LLM then acts as judge, scoring answers on four criteria: comprehensiveness (how thoroughly the answer covers every aspect and detail of the question), diversity (how rich and varied the perspectives it offers are), empowerment (how much it helps the reader make an informed judgment on the topic), and directness (how concise and precise it is). Comprehensiveness and directness are naturally in tension with each other, though the paper doesn't offer much justification or prior work backing this particular set of four criteria.
 
 The paper compared three approaches: GraphRAG's community detection results across four levels (from C0, the most comprehensive root level, down to C3, the most granular); a text-source (TS) variant that builds the graph but skips community summaries, instead pulling up to 20 entities whose embeddings are closest to the query and using the original text chunks those entities appear in; and a standard RAG baseline that vectorizes text chunks directly and retrieves whichever is closest to the query embedding.
 
@@ -84,7 +84,7 @@ Tested on two datasets, Podcast (8,564 nodes, 20,691 edges) and News (15,754 nod
 
 ## Wrap-up
 
-GraphRAG's strength is clear enough: questions that require a global view of the entire corpus, genuine global sensemaking, benefit clearly from pre-building a knowledge graph and community summaries. For a quick, narrow factual lookup, though, a standard RAG pipeline that skips the graph entirely may give a more concise answer. In the end, what kind of question you're trying to answer is what decides whether GraphRAG is worth the overhead.
+GraphRAG is useful for questions that require a view of the whole corpus. Its knowledge graph and community summaries help bring information from different documents into the answer. For a quick, narrow factual lookup, though, a standard RAG pipeline that skips the graph entirely may give a more concise answer. Whether GraphRAG is worth the overhead depends on the question you're trying to answer.
 
 ## References
 - [From Local to Global: A GraphRAG Approach to Query-Focused Summarization](https://arxiv.org/pdf/2404.16130)

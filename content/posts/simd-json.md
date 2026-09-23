@@ -21,7 +21,7 @@ For example:
 - When encountering a quotation mark (`"`), it indicates the start of a string.
 - When encountering a colon (`:`), it indicates that a value is expected next.
 
-Below is a simplified pseudo-code representation of how a scalar parser works:
+Here is a simplified version of a scalar parser in pseudocode:
 
 ```
 parse(buf):
@@ -64,21 +64,21 @@ However, when the next instruction is unknown (such as in branch situations), th
 
 To handle this, CPUs perform branch prediction to guess whether a branch will be true or false, and process instructions based on this prediction. If the prediction is correct, instructions are processed quickly. However, if the prediction is wrong, all previous operations are discarded, and the CPU has to restart from the beginning (`IF` stage), leading to performance loss.
 
-Traditional scalar parsers contain many branches (e.g., `if` and `switch` statements), and branch prediction failures occur frequently. As a result, the CPU cycles are wasted, causing performance degradation.
+Traditional scalar parsers contain many branches (e.g., `if` and `switch` statements), and branch prediction failures occur frequently. Those mispredictions waste CPU cycles and slow down parsing.
 
 
 **2. Increased Branching for String Internal/External Determination**
 
 When encountering a quotation mark (`"`), the parser starts and ends the string, but if there is an escape sequence (`\\`), it should not be considered as the end of the string. Additionally, the length of consecutive backslashes (e.g., `\\\\`) changes the validity of `\"`.
 
-These escape rules require many branches to be handled.
+Handling these escape rules requires additional branches.
 
 **3. Sporadic Memory Access Patterns**
 
 Scalar parsers read strings byte by byte. For each byte, actions such as state checking or table lookups are performed. This leads to sporadic memory access patterns, which are highly inefficient in terms of locality. As a result, CPU cache (L1, L2) misses occur frequently.
 
 ## SIMD JSON: What is it?
-SIMD JSON is an algorithm that accelerates JSON parsing by actively utilizing SIMD (Single Instruction, Multiple Data) instructions in modern CPUs. The algorithm was first introduced in the 2019 paper “Parsing Gigabytes of JSON per Second” by Intel engineer Geoff Langdale and Daniel Lemire, a professor at the Université du Québec.
+SIMD JSON is an algorithm that accelerates JSON parsing by using SIMD (Single Instruction, Multiple Data) instructions in modern CPUs. The algorithm was first introduced in the 2019 paper “Parsing Gigabytes of JSON per Second” by Intel engineer Geoff Langdale and Daniel Lemire, a professor at the Université du Québec.
 
 According to the paper, SIMD JSON is about 2 to 5 times faster than traditional scalar parsers for JSON deserialization.
 
@@ -180,16 +180,16 @@ Finally, we remove the quotation marks that mark the string boundaries from the 
 
 ![After Bitwise Op](/images/simd-json/stage0-after-bitwise-op.webp)
 
-Through this process, we obtain a bitmask where all the token boundary points are marked with 1s (e.g., `0001000100100000`).
+The result is a bitmask with a 1 at each token boundary (e.g., `0001000100100000`).
 
 The next step is to convert this bitmask into an index format suitable for the parser (e.g., `[3, 7, 10]`). To do this, we use the tzcnt (trailing zero count) algorithm. The algorithm finds the index of the lowest bit set to 1 in the bitmask. For example, in the bitmask `00101000`, the lowest bit set to 1 is at index 3. We add this index to the array and remove the least significant bit. This process is repeated.
 
-Additionally, we apply **loop unrolling** to further optimize the process.
+We also use **loop unrolling** to reduce loop overhead.
 
 ![Loop Unrolling](/images/simd-json/loop-unrolling.webp)
 
 ### Stage 2: JSON Parsing
-Once Stage 1 provides the token boundary indices, the actual parsing occurs. For each token, the appropriate parsing function is called to process the string, number, or other JSON data types.
+The parsing stage uses the token boundary indices from Stage 1 to parse each token as a string, number, or other JSON value.
 
 **Pseudocode for Stage 2: JSON Parsing**
 ```

@@ -139,7 +139,7 @@ But HotSpot's ability to devirtualize depends on what it knows at that call site
 
 Here's the catch: **HotSpot type profiles attach to bytecode indices (BCIs) inside the callee**, not the caller. So the receiver type profile at `Objects.equals@11` is a blend of every place in the program that ends up calling `Objects.equals()`.
 
-In one call site, a might be an `Integer`; in another, it might be a `String`, a `Long`, or some random user type.
+At one call site, `a` might be an `Integer`; in another, it might be a `String`, a `Long`, or some random user type.
 
 Even if my benchmark is "all Integer, all the time," the profile at `Objects.equals@11` can easily drift into polymorphic (or worse, megamorphic) territory. And once that happens, HotSpot Compiler gets conservative: it keeps the call virtual, and my hot loop pays the price.
 
@@ -204,7 +204,7 @@ Not bad for deleting a helper method call.
 
 ## 6) Next bottleneck: `VectorMask.toLong()` on ARM (NEON movemask pain)
 
-Once `equals()` stopped dominating the profile, something else stepped forward into the spotlight: `VectorMask.toLong()`.
+Once `equals()` stopped dominating the profile, the next bottleneck was `VectorMask.toLong()`.
 
 If you've done SIMD work on x86, you're used to having a "movemask" instruction:
 - `PMOVMSKB` / `VPMOVMSKB`
@@ -257,7 +257,7 @@ public static ByteVector fromArray(VectorSpecies<Byte> species, byte[] a, int of
 }
 ```
 
-In SwissMap, I already pad the backing array with a sentinel region specifically so that the probe loop never needs to worry about running off the end. So philosophically, that bounds check is redundant.
+In SwissMap, I already pad the backing array with a sentinel region specifically so that the probe loop never needs to worry about running off the end. Given that padding, the bounds check should be redundant.
 
 Practically though, turning it off isn't a local tweak. It's controlled by a system property (`jdk.incubator.vector.VECTOR_ACCESS_OOB_CHECK`), and changing it is a global decision that could affect other Vector API code in the same process. So I'm not treating that as a safe or general-purpose "optimization."
 
@@ -354,7 +354,7 @@ mov  x7, #0x10101010101010101
 mul  x7, x5, x7          ; broadcast(h2)
 ```
 
-So `broadcast(h2)` compiles into a single multiply by `0x010101...`, which is basically the best-case outcome: it boils down to a single multiplication in the hot path, and we're done.
+So `broadcast(h2)` compiles into a single multiply by `0x010101...`.
 
 ### The eqMask trick turns into a tight scalar pipeline
 

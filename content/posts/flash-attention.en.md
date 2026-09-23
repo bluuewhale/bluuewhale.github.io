@@ -154,7 +154,7 @@ We can roughly account for the data needed to process one tile as follows:
 
 As the head dimension $d$, tile height $B_r$, or tile width $B_c$ increases, processing a tile requires more memory. But the working data still has to fit in the available SRAM. In other words, these dimensions are constrained by the SRAM capacity $M$. Since the head dimension and available SRAM are generally fixed for a given model and device, we need to choose the tile dimensions accordingly. The column block size therefore scales with $M/d$, while the row block size also has the paper's additional upper bound of $d$. Here, $T_r$ and $T_c$ denote the number of blocks, rather than the dimensions of a block.
 
-I could not find a separate derivation for the constant $4$. In an actual implementation, it seems that we would also need to account for details such as the data types of $Q$, $K$, and $V$—FP32, for example—when choosing appropriate block sizes.
+I could not find a separate derivation for the constant $4$. In an actual implementation, it seems that we would also need to account for details such as the data types of $Q$, $K$, and $V$ (FP32, for example) when choosing appropriate block sizes.
 
 ## Line 2
 
@@ -273,7 +273,7 @@ Motivated by these observations, the authors proposed two predefined attention p
 
 The strided pattern combines attention to nearby locations with attention to locations separated by a regular stride. The paper describes it as a useful fit for data whose structure aligns with that stride, such as images and certain kinds of audio. For text, where relevant relationships do not follow the same regular spacing, it was less effective in their experiments.
 
-For these cases, the authors introduced the fixed pattern. It divides the input into blocks, allows attention within the current block to the current and earlier positions, and makes the last $c$ positions of previous blocks available to later blocks. For example, with a block size of 128 and $c=8$, the final eight positions in each block act as connections to later blocks—positions 120–127 in the first block when counting from zero.
+For these cases, the authors introduced the fixed pattern. It divides the input into blocks, allows attention within the current block to the current and earlier positions, and makes the last $c$ positions of previous blocks available to later blocks. For example, with a block size of 128 and $c=8$, the final eight positions in each block act as connections to later blocks. In the first block, these are positions 120–127 when counting from zero.
 
 ![](/images/flash-attention/image24.png)
 

@@ -17,7 +17,7 @@ I want to start a series called "Diving into NestJS." I picked up NestJS recentl
 For this first post, let's look at `NestFactory`, the entry point for every NestJS application.
 
 ## NestFactory
-Open the NestJS docs and the very first tutorial you hit shows code like this:
+The first tutorial in the NestJS docs shows code like this:
 
 ```typescript
 import { NestFactory } from '@nestjs/core';
@@ -31,7 +31,7 @@ async function bootstrap() {
 bootstrap();
 ```
 
-From this, you can tell that `NestFactory` reads `AppModule` and builds a `NestApplication` instance, the object that holds all the logic for handling incoming requests. This post's goal is to understand exactly what happens inside `NestFactory.create()`.
+From this, you can tell that `NestFactory` reads `AppModule` and builds a `NestApplication` instance, the object that holds all the logic for handling incoming requests. Let's look at what happens inside `NestFactory.create()`.
 
 ## NestFactory.create()
 
@@ -451,7 +451,7 @@ export class InstanceLoader {
 ```
 
 ## NestApplication
-This is the final step. Once module and dependency registration wrap up, `NestFactory` creates the `NestApplication` instance. It wraps that instance in a `Proxy` to handle error handling, method chaining, and fallbacks, and with that, `NestFactory`'s job is done.
+This is the final step. Once module and dependency registration wrap up, `NestFactory` creates the `NestApplication` instance. It wraps that instance in a `Proxy` for error handling, method chaining, and fallbacks, and with that, `NestFactory`'s job is done.
 
 ```typescript
 // packages/core/nest-factory.ts

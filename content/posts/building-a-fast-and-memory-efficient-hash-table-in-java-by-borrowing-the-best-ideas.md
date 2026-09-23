@@ -62,13 +62,13 @@ So yes: the Vector API was the permission slip I needed to try something I'd nor
 
 ## 4) So I started implementing it (and immediately learned what Java makes easy vs. hard)
 
-I began with the core SwissTable separation: a compact **control array** plus separate **key/value storage**. The control bytes are the main character: if those stay hot in cache and the scan stays branch-light, the table feels fast even before micro-optimizations.  
+I began with the core SwissTable separation: a compact **control array** plus separate **key/value storage**. The control bytes do most of the filtering: if those stay hot in cache and the scan stays branch-light, the table feels fast even before micro-optimizations.
 
 I used the familiar `h1/h2` split idea: `h1` selects the initial group, while `h2` is the small fingerprint stored in the control byte to filter candidates. Lookup became a two-stage pipeline: (1) vector-scan the control bytes for `h2` matches, (2) for each match, compare the actual key to confirm. Insertion reused the same scan, but with an extra "find first empty slot" path once we know the key doesn't already exist.
 
-Java started pushing back on *layout realism*. 
+Java's object layout introduced a constraint here.
 
-In C++ you can pack keys/values tightly; in Java, object references mean the "key array" is still an array of pointers, and touching keys can still be a cache-miss parade. So the design goal became: **touch keys as late as possible**, and when you must touch them, touch as few as possible, reflecting the SwissTable worldview throughout.  
+In C++ you can pack keys/values tightly; in Java, object references mean the "key array" is still an array of pointers, and touching keys can still cause frequent cache misses. So the design goal became: **touch keys as late as possible**, and when you must touch them, touch as few as possible, reflecting the SwissTable worldview throughout.
 
 Deletion required tombstones (a "deleted but not empty" marker) so probing doesn't break, but tombstones also accumulate and can quietly degrade performance if you never clean them up.  
 
