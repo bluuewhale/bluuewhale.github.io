@@ -24,7 +24,7 @@
 
 | 이전 표현 | 수정한 표현 |
 | --- | --- |
-| 이 공백이 특히 두드러지는 지점이 Query-Focused Summarization입니다. | 이러한 한계가 특히 두드러지는 과업이 Query-Focused Summarization입니다. |
+| 이 공백이 특히 두드러지는 지점이 Query-Focused Summarization입니다. | 이러한 한계가 특히 두드러지는 태스크이 Query-Focused Summarization입니다. |
 | 장기 기억은 두 가지 서로 다른 리듬으로 관리됩니다. | 장기 기억은 업데이트 시점에 따라 두 가지 방식으로 관리됩니다. |
 | 물론 공짜는 없습니다. | 다만 CSR에도 한계가 있습니다. |
 | 첫 번째는 MACHINE_CLEAR 빈도가 왜 함께 증가했는가입니다. | 첫 번째 의문은 MACHINE_CLEAR 빈도가 왜 함께 증가했는지입니다. |
